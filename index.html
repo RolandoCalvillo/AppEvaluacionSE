@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evaluación Modular - CNCI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #2a6aff 0%, #ff8500 100%);
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(0); }
+        }
+        .bounce-in {
+            animation: bounceIn 0.6s ease-out;
+        }
+        @keyframes bounceIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-50">
+    <!-- Login Screen -->
+    <div id="loginScreen" class="min-h-screen gradient-bg flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md fade-in">
+            <div class="text-center mb-8">
+                <img src="https://i.ibb.co/m5QcyKWg/Logo-CNCI.png" alt="Logo CNCI" class="mx-auto mb-6 h-20 w-auto bounce-in">
+                <h1 class="text-2xl font-bold text-gray-800 mb-2">📊 Evaluación Modular</h1>
+                <h2 class="text-lg text-gray-700 mb-1">Departamento de Servicios Estudiantiles</h2>
+                <h3 class="text-md font-semibold text-blue-600 mb-2">🗓️ Módulo Octubre 2025</h3>
+                <p class="text-sm text-gray-600">Consulta tu desempeño del módulo de manera detallada ingresando tu usuario Vici</p>
+            </div>
+            
+            <form id="loginForm" class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">👤 Usuario</label>
+                    <input type="text" id="username" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="Ingresa tu usuario" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">🔒 Contraseña</label>
+                    <input type="password" id="password" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="Ingresa tu contraseña" required>
+                </div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-all transform hover:scale-105">
+                    🚀 Ingresar
+                </button>
+            </form>
+            
+            <div id="loginError" class="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg hidden">
+                ❌ Usuario o contraseña incorrectos
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Screen -->
+    <div id="dashboardScreen" class="hidden min-h-screen bg-gray-50">
+        <!-- Header -->
+        <header class="bg-white shadow-sm border-b-4 border-blue-500">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center py-4">
+                    <div class="flex items-center space-x-4">
+                        <img src="https://i.ibb.co/m5QcyKWg/Logo-CNCI.png" alt="Logo CNCI" class="h-12 w-auto">
+                        <div>
+                            <h1 class="text-xl font-bold text-gray-900">📊 Dashboard de Evaluación</h1>
+                            <p class="text-sm text-gray-600">Módulo Octubre 2025</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span id="userWelcome" class="text-gray-700 font-medium"></span>
+                        <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-all">
+                            🚪 Salir
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Welcome Message -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="bg-gradient-to-r from-blue-500 to-orange-500 rounded-xl p-6 text-white mb-6 fade-in">
+                <h2 class="text-2xl font-bold mb-2">¡Bienvenido! 👋</h2>
+                <p id="welcomeMessage" class="text-lg opacity-90"></p>
+            </div>
+
+            <!-- Tabs -->
+            <div class="bg-white rounded-xl shadow-lg">
+                <div class="border-b border-gray-200">
+                    <nav class="flex space-x-8 px-6">
+                        <button onclick="showTab('resumen')" class="tab-button py-4 px-2 border-b-2 border-blue-500 text-blue-600 font-medium">
+                            📈 Resumen General
+                        </button>
+                        <button onclick="showTab('tendencias')" class="tab-button py-4 px-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium">
+                            📊 Tendencias
+                        </button>
+                        <button onclick="showTab('insignias')" class="tab-button py-4 px-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium">
+                            🏆 Insignias
+                        </button>
+                        <button onclick="showTab('plan')" class="tab-button py-4 px-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium">
+                            📋 Plan de Trabajo
+                        </button>
+                    </nav>
+                </div>
+
+                <!-- Tab Content -->
+                <div class="p-6">
+                    <div id="resumen-tab" class="tab-content">
+                        <h3 class="text-xl font-semibold mb-4">📈 Resumen General</h3>
+                        <p class="text-gray-600">Contenido del resumen general próximamente...</p>
+                    </div>
+                    <div id="tendencias-tab" class="tab-content hidden">
+                        <h3 class="text-xl font-semibold mb-4">📊 Tendencias</h3>
+                        <p class="text-gray-600">Análisis de tendencias próximamente...</p>
+                    </div>
+                    <div id="insignias-tab" class="tab-content hidden">
+                        <h3 class="text-xl font-semibold mb-4">🏆 Insignias</h3>
+                        <p class="text-gray-600">Sistema de insignias próximamente...</p>
+                    </div>
+                    <div id="plan-tab" class="tab-content hidden">
+                        <h3 class="text-xl font-semibold mb-4">📋 Plan de Trabajo</h3>
+                        <p class="text-gray-600">Plan de trabajo próximamente...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Panel -->
+    <div id="adminScreen" class="hidden min-h-screen bg-gray-50">
+        <!-- Header -->
+        <header class="bg-white shadow-sm border-b-4 border-orange-500">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center py-4">
+                    <div class="flex items-center space-x-4">
+                        <img src="https://i.ibb.co/m5QcyKWg/Logo-CNCI.png" alt="Logo CNCI" class="h-12 w-auto">
+                        <div>
+                            <h1 class="text-xl font-bold text-gray-900">⚙️ Panel de Administrador</h1>
+                            <p class="text-sm text-gray-600">Gestión de Usuarios</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span id="adminWelcome" class="text-gray-700 font-medium"></span>
+                        <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-all">
+                            🚪 Salir
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <!-- Firebase Controls -->
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+                <h3 class="text-lg font-semibold mb-4">🔄 Sincronización Firebase</h3>
+                <div class="flex flex-wrap gap-4">
+                    <button onclick="syncToFirebase()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-all">
+                        📤 Sincronizar Firebase
+                    </button>
+                    <button onclick="loadFromFirebase()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-all">
+                        📥 Obtener de Firebase
+                    </button>
+                    <button onclick="showDeleteModal()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-all">
+                        🗑️ Eliminar Todo
+                    </button>
+                </div>
+            </div>
+
+            <!-- User Management -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-semibold">👥 Gestión de Usuarios</h3>
+                    <button onclick="showAddUserModal()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-all">
+                        ➕ Agregar Usuario
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rol</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supervisor</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTable" class="bg-white divide-y divide-gray-200">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Super Admin Panel -->
+    <div id="superAdminScreen" class="hidden min-h-screen bg-gray-50">
+        <!-- Header -->
+        <header class="bg-white shadow-sm border-b-4 border-purple-500">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center py-4">
+                    <div class="flex items-center space-x-4">
+                        <img src="https://i.ibb.co/m5QcyKWg/Logo-CNCI.png" alt="Logo CNCI" class="h-12 w-auto">
+                        <div>
+                            <h1 class="text-xl font-bold text-gray-900">👑 Panel Super Administrador</h1>
+                            <p class="text-sm text-gray-600">Gestión Completa del Sistema</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span id="superAdminWelcome" class="text-gray-700 font-medium"></span>
+                        <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-all">
+                            🚪 Salir
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <!-- Firebase Controls -->
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+                <h3 class="text-lg font-semibold mb-4">🔄 Sincronización Firebase</h3>
+                <div class="flex flex-wrap gap-4">
+                    <button onclick="syncToFirebase()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-all">
+                        📤 Sincronizar Firebase
+                    </button>
+                    <button onclick="loadFromFirebase()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-all">
+                        📥 Obtener de Firebase
+                    </button>
+                    <button onclick="showDeleteModal()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-all">
+                        🗑️ Eliminar Todo
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tabs for Super Admin -->
+            <div class="bg-white rounded-xl shadow-lg">
+                <div class="border-b border-gray-200">
+                    <nav class="flex space-x-8 px-6">
+                        <button onclick="showSuperAdminTab('usuarios')" class="super-admin-tab py-4 px-2 border-b-2 border-purple-500 text-purple-600 font-medium">
+                            👥 Usuarios
+                        </button>
+                        <button onclick="showSuperAdminTab('administradores')" class="super-admin-tab py-4 px-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium">
+                            👨‍💼 Administradores
+                        </button>
+                    </nav>
+                </div>
+
+                <!-- Tab Content -->
+                <div class="p-6">
+                    <div id="usuarios-super-tab" class="super-admin-tab-content">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-lg font-semibold">👥 Gestión de Usuarios</h3>
+                            <button onclick="showAddUserModal()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-all">
+                                ➕ Agregar Usuario
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rol</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supervisor</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="superUsersTable" class="bg-white divide-y divide-gray-200">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="administradores-super-tab" class="super-admin-tab-content hidden">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-lg font-semibold">👨‍💼 Gestión de Administradores</h3>
+                            <button onclick="showAddAdminModal()" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-all">
+                                ➕ Agregar Administrador
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuarios Asignados</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminsTable" class="bg-white divide-y divide-gray-200">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add User Modal -->
+    <div id="addUserModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 class="text-lg font-semibold mb-4">➕ Agregar Usuario</h3>
+            <form id="addUserForm">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Usuario</label>
+                        <input type="text" id="newUsername" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nombre Completo</label>
+                        <input type="text" id="newFullName" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Rol</label>
+                        <select id="newRole" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500" required>
+                            <option value="user">Usuario</option>
+                            <option value="admin">Administrador</option>
+                        </select>
+                    </div>
+                    <div id="supervisorField">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Supervisor</label>
+                        <select id="newSupervisor" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500">
+                            <option value="">Seleccionar supervisor</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" onclick="closeAddUserModal()" class="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
+                        Agregar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Admin Modal -->
+    <div id="addAdminModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 class="text-lg font-semibold mb-4">➕ Agregar Administrador</h3>
+            <form id="addAdminForm">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Usuario</label>
+                        <input type="text" id="newAdminUsername" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nombre Completo</label>
+                        <input type="text" id="newAdminFullName" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500" required>
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" onclick="closeAddAdminModal()" class="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600">
+                        Agregar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 class="text-lg font-semibold mb-4 text-red-600">⚠️ Confirmar Eliminación</h3>
+            <p class="text-gray-700 mb-6">¿Estás seguro de que deseas eliminar toda la información de la aplicación? Esta acción no se puede deshacer.</p>
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeDeleteModal()" class="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50">
+                    Cancelar
+                </button>
+                <button onclick="deleteAllData()" class="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600">
+                    Eliminar Todo
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDApFuzCg6bxKNniw7mTzcZAeAbwOV1mgY",
+            authDomain: "appevaluacionse.firebaseapp.com",
+            projectId: "appevaluacionse",
+            storageBucket: "appevaluacionse.firebasestorage.app",
+            messagingSenderId: "52140253389",
+            appId: "1:52140253389:web:80fa2267b27d3472d78984",
+            measurementId: "G-QFHR58RGH8"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Global variables
+        let currentUser = null;
+        let users = [];
+
+        // Initialize sample data
+        function initializeSampleData() {
+            if (localStorage.getItem('usersData')) {
+                users = JSON.parse(localStorage.getItem('usersData'));
+                return;
+            }
+
+            users = [
+                // Super Admin
+                { username: 'superadmin', password: '123', fullName: 'Super Administrador', role: 'superadmin', supervisor: null },
+                
+                // Administradores
+                { username: 'admin1', password: '123', fullName: 'María González López', role: 'admin', supervisor: null },
+                { username: 'admin2', password: '123', fullName: 'Carlos Rodríguez Pérez', role: 'admin', supervisor: null },
+                { username: 'admin3', password: '123', fullName: 'Ana Martínez Silva', role: 'admin', supervisor: null },
+                { username: 'admin4', password: '123', fullName: 'Luis Hernández García', role: 'admin', supervisor: null },
+                { username: 'admin5', password: '123', fullName: 'Carmen Jiménez Torres', role: 'admin', supervisor: null },
+                { username: 'admin6', password: '123', fullName: 'Roberto Sánchez Ruiz', role: 'admin', supervisor: null },
+                { username: 'admin7', password: '123', fullName: 'Patricia López Morales', role: 'admin', supervisor: null },
+                { username: 'admin8', password: '123', fullName: 'Fernando Castro Díaz', role: 'admin', supervisor: null }
+            ];
+
+            // Usuarios para cada administrador
+            const adminUsers = [
+                'admin1', 'admin2', 'admin3', 'admin4', 'admin5', 'admin6', 'admin7', 'admin8'
+            ];
+
+            const userNames = [
+                'Juan Pérez', 'María García', 'Carlos López', 'Ana Martínez', 'Luis Rodríguez',
+                'Carmen Hernández', 'José González', 'Laura Sánchez', 'Miguel Torres', 'Isabel Ruiz'
+            ];
+
+            adminUsers.forEach((admin, adminIndex) => {
+                for (let i = 1; i <= 10; i++) {
+                    const userIndex = (adminIndex * 10 + i - 1) % userNames.length;
+                    users.push({
+                        username: `${admin}_user${i}`,
+                        password: '123',
+                        fullName: `${userNames[userIndex]} ${adminIndex + 1}-${i}`,
+                        role: 'user',
+                        supervisor: admin
+                    });
+                }
+            });
+
+            localStorage.setItem('usersData', JSON.stringify(users));
+        }
+
+        // Login functionality
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            const user = users.find(u => u.username === username && u.password === password);
+            
+            if (user) {
+                currentUser = user;
+                showScreen(user.role);
+                document.getElementById('loginError').classList.add('hidden');
+            } else {
+                document.getElementById('loginError').classList.remove('hidden');
+            }
+        });
+
+        // Show appropriate screen based on role
+        function showScreen(role) {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('dashboardScreen').classList.add('hidden');
+            document.getElementById('adminScreen').classList.add('hidden');
+            document.getElementById('superAdminScreen').classList.add('hidden');
+
+            if (role === 'user') {
+                document.getElementById('dashboardScreen').classList.remove('hidden');
+                document.getElementById('userWelcome').textContent = `👤 ${currentUser.fullName}`;
+                document.getElementById('welcomeMessage').textContent = `Hola ${currentUser.fullName.split(' ')[0]}, aquí puedes consultar tu evaluación de desempeño del módulo.`;
+            } else if (role === 'admin') {
+                document.getElementById('adminScreen').classList.remove('hidden');
+                document.getElementById('adminWelcome').textContent = `👨‍💼 ${currentUser.fullName}`;
+                loadUsersTable();
+            } else if (role === 'superadmin') {
+                document.getElementById('superAdminScreen').classList.remove('hidden');
+                document.getElementById('superAdminWelcome').textContent = `👑 ${currentUser.fullName}`;
+                loadSuperAdminTables();
+            }
+        }
+
+        // Tab functionality for dashboard
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('border-blue-500', 'text-blue-600');
+                btn.classList.add('border-transparent', 'text-gray-500');
+            });
+            
+            document.getElementById(`${tabName}-tab`).classList.remove('hidden');
+            event.target.classList.remove('border-transparent', 'text-gray-500');
+            event.target.classList.add('border-blue-500', 'text-blue-600');
+        }
+
+        // Tab functionality for super admin
+        function showSuperAdminTab(tabName) {
+            document.querySelectorAll('.super-admin-tab-content').forEach(tab => tab.classList.add('hidden'));
+            document.querySelectorAll('.super-admin-tab').forEach(btn => {
+                btn.classList.remove('border-purple-500', 'text-purple-600');
+                btn.classList.add('border-transparent', 'text-gray-500');
+            });
+            
+            document.getElementById(`${tabName}-super-tab`).classList.remove('hidden');
+            event.target.classList.remove('border-transparent', 'text-gray-500');
+            event.target.classList.add('border-purple-500', 'text-purple-600');
+        }
+
+        // Load users table for admin
+        function loadUsersTable() {
+            const tbody = document.getElementById('usersTable');
+            const supervisedUsers = users.filter(u => u.supervisor === currentUser.username);
+            
+            tbody.innerHTML = supervisedUsers.map(user => `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${user.username}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${user.fullName}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                            ${user.role === 'user' ? 'Usuario' : 'Administrador'}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${user.supervisor || 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button onclick="editUser('${user.username}')" class="text-blue-600 hover:text-blue-900 mr-3">✏️ Editar</button>
+                        <button onclick="deleteUser('${user.username}')" class="text-red-600 hover:text-red-900">🗑️ Eliminar</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Load tables for super admin
+        function loadSuperAdminTables() {
+            // Load users table
+            const usersTbody = document.getElementById('superUsersTable');
+            const allUsers = users.filter(u => u.role === 'user');
+            
+            usersTbody.innerHTML = allUsers.map(user => `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${user.username}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${user.fullName}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                            Usuario
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${user.supervisor || 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button onclick="editUser('${user.username}')" class="text-blue-600 hover:text-blue-900 mr-3">✏️ Editar</button>
+                        <button onclick="deleteUser('${user.username}')" class="text-red-600 hover:text-red-900">🗑️ Eliminar</button>
+                    </td>
+                </tr>
+            `).join('');
+
+            // Load admins table
+            const adminsTbody = document.getElementById('adminsTable');
+            const allAdmins = users.filter(u => u.role === 'admin');
+            
+            adminsTbody.innerHTML = allAdmins.map(admin => {
+                const assignedUsers = users.filter(u => u.supervisor === admin.username).length;
+                return `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${admin.username}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${admin.fullName}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${assignedUsers} usuarios</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button onclick="editUser('${admin.username}')" class="text-orange-600 hover:text-orange-900 mr-3">✏️ Editar</button>
+                            <button onclick="deleteUser('${admin.username}')" class="text-red-600 hover:text-red-900">🗑️ Eliminar</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Modal functions
+        function showAddUserModal() {
+            const supervisorSelect = document.getElementById('newSupervisor');
+            const admins = users.filter(u => u.role === 'admin');
+            
+            supervisorSelect.innerHTML = '<option value="">Seleccionar supervisor</option>' +
+                admins.map(admin => `<option value="${admin.username}">${admin.fullName}</option>`).join('');
+            
+            document.getElementById('addUserModal').classList.remove('hidden');
+            document.getElementById('addUserModal').classList.add('flex');
+        }
+
+        function closeAddUserModal() {
+            document.getElementById('addUserModal').classList.add('hidden');
+            document.getElementById('addUserModal').classList.remove('flex');
+            document.getElementById('addUserForm').reset();
+        }
+
+        function showAddAdminModal() {
+            document.getElementById('addAdminModal').classList.remove('hidden');
+            document.getElementById('addAdminModal').classList.add('flex');
+        }
+
+        function closeAddAdminModal() {
+            document.getElementById('addAdminModal').classList.add('hidden');
+            document.getElementById('addAdminModal').classList.remove('flex');
+            document.getElementById('addAdminForm').reset();
+        }
+
+        function showDeleteModal() {
+            document.getElementById('deleteModal').classList.remove('hidden');
+            document.getElementById('deleteModal').classList.add('flex');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').classList.add('hidden');
+            document.getElementById('deleteModal').classList.remove('flex');
+        }
+
+        // Add user form handler
+        document.getElementById('addUserForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const newUser = {
+                username: document.getElementById('newUsername').value,
+                password: '123',
+                fullName: document.getElementById('newFullName').value,
+                role: document.getElementById('newRole').value,
+                supervisor: document.getElementById('newSupervisor').value || null
+            };
+            
+            users.push(newUser);
+            localStorage.setItem('usersData', JSON.stringify(users));
+            
+            closeAddUserModal();
+            
+            if (currentUser.role === 'admin') {
+                loadUsersTable();
+            } else {
+                loadSuperAdminTables();
+            }
+        });
+
+        // Add admin form handler
+        document.getElementById('addAdminForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const newAdmin = {
+                username: document.getElementById('newAdminUsername').value,
+                password: '123',
+                fullName: document.getElementById('newAdminFullName').value,
+                role: 'admin',
+                supervisor: null
+            };
+            
+            users.push(newAdmin);
+            localStorage.setItem('usersData', JSON.stringify(users));
+            
+            closeAddAdminModal();
+            loadSuperAdminTables();
+        });
+
+        // Role change handler
+        document.getElementById('newRole').addEventListener('change', function() {
+            const supervisorField = document.getElementById('supervisorField');
+            if (this.value === 'admin') {
+                supervisorField.style.display = 'none';
+            } else {
+                supervisorField.style.display = 'block';
+            }
+        });
+
+        // Delete user function
+        function deleteUser(username) {
+            if (confirm('¿Estás seguro de que deseas eliminar este usuario?')) {
+                users = users.filter(u => u.username !== username);
+                localStorage.setItem('usersData', JSON.stringify(users));
+                
+                if (currentUser.role === 'admin') {
+                    loadUsersTable();
+                } else {
+                    loadSuperAdminTables();
+                }
+            }
+        }
+
+        // Edit user function (placeholder)
+        function editUser(username) {
+            alert('Función de edición en desarrollo');
+        }
+
+        // Delete all data
+        function deleteAllData() {
+            localStorage.clear();
+            users = [];
+            initializeSampleData();
+            closeDeleteModal();
+            alert('Todos los datos han sido eliminados y reinicializados');
+            
+            if (currentUser.role === 'admin') {
+                loadUsersTable();
+            } else {
+                loadSuperAdminTables();
+            }
+        }
+
+        // Firebase functions
+        async function syncToFirebase() {
+            try {
+                await db.collection('users').doc('allUsers').set({
+                    data: users,
+                    lastUpdated: new Date()
+                });
+                alert('✅ Datos sincronizados con Firebase exitosamente');
+            } catch (error) {
+                console.error('Error syncing to Firebase:', error);
+                alert('❌ Error al sincronizar con Firebase');
+            }
+        }
+
+        async function loadFromFirebase() {
+            try {
+                const doc = await db.collection('users').doc('allUsers').get();
+                if (doc.exists) {
+                    const data = doc.data();
+                    users = data.data || [];
+                    localStorage.setItem('usersData', JSON.stringify(users));
+                    
+                    if (currentUser.role === 'admin') {
+                        loadUsersTable();
+                    } else {
+                        loadSuperAdminTables();
+                    }
+                    
+                    alert('✅ Datos cargados desde Firebase exitosamente');
+                } else {
+                    alert('⚠️ No se encontraron datos en Firebase');
+                }
+            } catch (error) {
+                console.error('Error loading from Firebase:', error);
+                alert('❌ Error al cargar desde Firebase');
+            }
+        }
+
+        // Logout function
+        function logout() {
+            currentUser = null;
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('dashboardScreen').classList.add('hidden');
+            document.getElementById('adminScreen').classList.add('hidden');
+            document.getElementById('superAdminScreen').classList.add('hidden');
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+        }
+
+        // Initialize the application
+        initializeSampleData();
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9809e52ba16eca13',t:'MTc1ODEyNTY1MS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
