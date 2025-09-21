@@ -685,9 +685,8 @@
                 return;
             }
 
-            if (!userId) {
-                const userExists = await getDoc(doc(db, "users", username));
-                if(userExists.exists()){
+            if (!userId) { // Solo validar si es un usuario nuevo
+                if (usersCache[username]) {
                     alert("Este nombre de usuario ya existe. Por favor, elige otro.");
                     return;
                 }
@@ -781,8 +780,7 @@
                 alert("El nombre de usuario es obligatorio.");
                 return;
             }
-            const userExists = await getDoc(doc(db, "users", username));
-            if(userExists.exists()) {
+            if (usersCache[username]) {
                 alert("Este nombre de usuario ya existe. Por favor, elige otro.");
                 return;
             }
@@ -1360,8 +1358,9 @@
             evaluationsSnapshot.forEach(doc => {
                 const e = doc.data();
                 const asesorNombre = usersCache[e.asesorId]?.nombre || 'N/A';
+                // CORRECCIÓN AQUÍ: Usar e.month y e.year en lugar de e.mes y e.año
                 let row = [
-                    doc.id, e.asesorId, `"${asesorNombre}"`, e.mes, e.año,
+                    doc.id, e.asesorId, `"${asesorNombre}"`, e.month, e.year,
                     e.calificacionGeneral || '', e.metaLlamadas || '',
                     `"${(e.comentariosGenerales || '').replace(/"/g, '""')}"`,
                     `"${e.enlaceDetalles || ''}"`,
@@ -1498,13 +1497,14 @@
                         return obj;
                     }, {});
 
+                    // CORRECCIÓN: Usar 'mes' y 'año' del CSV
                     if (!record.evalId && !(record.asesorId && record.año && record.mes)) continue;
                     
                     const evalId = record.evalId || `${record.asesorId}_${record.año}_${record.mes}`;
                     const evalRef = doc(db, "evaluations", evalId);
 
                     const evalData = {
-                        asesorId: record.asesorId, supervisorId: currentUser.id, mes: record.mes, año: record.año,
+                        asesorId: record.asesorId, supervisorId: currentUser.id, month: record.mes, year: record.año, // CORRECCIÓN: 'month' y 'year'
                         calificacionGeneral: record.calificacionGeneral || '', metaLlamadas: record.metaLlamadas || '',
                         comentariosGenerales: record.comentariosGenerales || '', enlaceDetalles: record.enlaceDetalles || '',
                         enlacePlanTrabajo: record.enlacePlanTrabajo || '', textoPlanTrabajo: record.textoPlanTrabajo || '',
