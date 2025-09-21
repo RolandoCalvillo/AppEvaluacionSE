@@ -609,6 +609,7 @@
 
             } else {
                 document.getElementById('userModalTitle').textContent = 'Añadir Usuario';
+                document.getElementById('userId').value = ''; // CORRECCIÓN: Limpiar explícitamente el ID para el modo "Añadir"
                 document.getElementById('userUsername').disabled = false;
             }
             document.getElementById('userModal').classList.remove('hidden');
@@ -625,7 +626,22 @@
         document.getElementById('userForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const userId = document.getElementById('userId').value;
-            const username = document.getElementById('userUsername').value;
+            const username = document.getElementById('userUsername').value.trim();
+            
+            if(!username){
+                alert("El nombre de usuario es obligatorio.");
+                return;
+            }
+
+            // CORRECCIÓN: Si estamos en modo AÑADIR (no hay userId), verificar si el usuario ya existe.
+            if (!userId) {
+                const userExists = await getDoc(doc(db, "users", username));
+                if(userExists.exists()){
+                    alert("Este nombre de usuario ya existe. Por favor, elige otro.");
+                    return;
+                }
+            }
+
             const userData = {
                 nombre: document.getElementById('userFullName').value,
                 password: document.getElementById('userPassword').value,
@@ -633,7 +649,10 @@
                 supervisorAsignado: document.getElementById('userRole').value === 'asesor' ? document.getElementById('userSupervisor').value : null
             };
             
-            await setDoc(doc(db, "users", userId || username), userData);
+            // CORRECCIÓN: Usar el userId para editar, o el nuevo username para crear.
+            const docId = userId || username;
+            
+            await setDoc(doc(db, "users", docId), userData);
             showSyncIndicator('superAdminSyncIndicator');
             closeUserModal();
             await loadUsersCache();
@@ -1264,4 +1283,5 @@
     </script>
 </body>
 </html>
+
 
