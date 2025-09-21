@@ -77,6 +77,15 @@
         /* Ocultar scrollbar en el contenedor de modales */
         .modal-container::-webkit-scrollbar { display: none; }
         .modal-container { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Estilos para la tabla interactiva */
+        .th-sortable {
+            cursor: pointer;
+            user-select: none;
+        }
+        .th-sortable:hover {
+            background-color: #f0f4f8;
+        }
     </style>
 </head>
 <body class="bg-gray-100 font-sans">
@@ -146,20 +155,26 @@
                                 <h2 class="text-lg font-bold">Gestión de Usuarios</h2>
                                 <button onclick="openUserModal()" class="btn-primary text-white font-semibold py-2 px-4 rounded-lg">Añadir Usuario</button>
                             </div>
+                            <!-- Barra de Búsqueda -->
+                            <div class="mb-4">
+                                <input type="text" id="userSearchInput" placeholder="Buscar por nombre o usuario..." class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                            </div>
                             <div class="overflow-x-auto">
                                 <table class="min-w-full divide-y divide-gray-200">
                                     <thead class="bg-gray-100">
                                         <tr>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Usuario</th>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rol</th>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Supervisor</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase th-sortable" onclick="sortUsers('nombre')">Nombre ↕️</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase th-sortable" onclick="sortUsers('id')">Usuario ↕️</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase th-sortable" onclick="sortUsers('rol')">Rol ↕️</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase th-sortable" onclick="sortUsers('supervisorAsignado')">Supervisor ↕️</th>
                                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
                                         </tr>
                                     </thead>
                                     <tbody id="usersTableBody" class="bg-white divide-y divide-gray-200"></tbody>
                                 </table>
                             </div>
+                             <!-- Paginación -->
+                            <div id="userPagination" class="mt-4 flex justify-between items-center text-sm"></div>
                         </div>
                          <!-- Analíticas Globales -->
                         <div class="bg-white rounded-lg shadow-lg p-6">
@@ -175,7 +190,6 @@
                     </div>
                     <!-- Columna Derecha -->
                     <div class="space-y-6">
-                         <!-- CORRECCIÓN: Sección de Títulos de Login Restaurada -->
                         <div class="bg-white rounded-lg shadow-lg p-6">
                             <h2 class="text-lg font-bold mb-4">Personalizar Pantalla de Login</h2>
                             <div class="space-y-4">
@@ -194,17 +208,25 @@
                         </div>
                         <!-- Centro de Respaldo y Restauración -->
                         <div class="bg-white rounded-lg shadow-lg p-6">
-                            <h2 class="text-lg font-bold mb-4">Centro de Respaldo (CSV)</h2>
-                            <div class="space-y-4">
+                            <h2 class="text-lg font-bold mb-4">Centro de Datos y Respaldo</h2>
+                            <div class="mb-4">
+                                <h3 class="font-semibold mb-2">Sincronización Manual con Firebase</h3>
+                                <div class="flex space-x-2 mt-1">
+                                    <button onclick="forceSyncToFirebase()" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg text-sm">Sincronizar a Firebase</button>
+                                    <button onclick="forceReloadFromFirebase()" class="flex-1 bg-teal-500 hover:bg-teal-600 text-white font-semibold py-2 px-4 rounded-lg text-sm">Recargar de Firebase</button>
+                                </div>
+                            </div>
+                            <div class="space-y-4 border-t pt-4">
+                                <h3 class="font-semibold">Respaldo CSV</h3>
                                 <div>
-                                    <h3 class="font-semibold">Usuarios</h3>
+                                    <h4 class="text-sm font-medium">Usuarios</h4>
                                     <div class="flex space-x-2 mt-1">
                                         <button onclick="exportUsersToCSV()" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg text-sm">Exportar</button>
                                         <button onclick="openImportModal('users')" class="flex-1 bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg text-sm">Importar</button>
                                     </div>
                                 </div>
                                 <div>
-                                    <h3 class="font-semibold">Insignias</h3>
+                                    <h4 class="text-sm font-medium">Insignias</h4>
                                     <div class="flex space-x-2 mt-1">
                                         <button onclick="exportBadgesToCSV()" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg text-sm">Exportar</button>
                                         <button onclick="openImportModal('badges')" class="flex-1 bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg text-sm">Importar</button>
@@ -652,6 +674,13 @@
         let supervisorChart = null;
         let asesorChart = null;
         let currentEvaluationBadges = []; 
+        let userTableState = {
+            searchTerm: '',
+            sortKey: 'nombre',
+            sortDirection: 'asc',
+            currentPage: 1,
+            rowsPerPage: 15
+        };
 
 
         // ======================= INICIALIZACIÓN DE LA APP =======================
@@ -761,24 +790,110 @@
             }
             setupSuperAdminChartSelectors();
             loadSuperAdminCharts();
+            // Listener para la barra de búsqueda de usuarios
+            document.getElementById('userSearchInput').addEventListener('input', (e) => {
+                userTableState.searchTerm = e.target.value.toLowerCase();
+                userTableState.currentPage = 1; 
+                renderUsersTable();
+            });
         }
 
         function renderUsersTable() {
             const tbody = document.getElementById('usersTableBody');
             tbody.innerHTML = '';
-            Object.values(usersCache).sort((a, b) => a.nombre.localeCompare(b.nombre)).forEach(user => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap">${user.nombre}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${user.id}</td>
-                    <td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.rol === 'supervisor' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}">${user.rol}</span></td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${user.supervisorAsignado ? usersCache[user.supervisorAsignado]?.nombre || 'N/A' : 'N/A'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button onclick="openUserModal('${user.id}')" class="text-indigo-600 hover:text-indigo-900">Editar</button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
+
+            // 1. Filtrar
+            let filteredUsers = Object.values(usersCache).filter(user => 
+                user.nombre.toLowerCase().includes(userTableState.searchTerm) ||
+                user.id.toLowerCase().includes(userTableState.searchTerm)
+            );
+
+            // 2. Ordenar
+            filteredUsers.sort((a, b) => {
+                let valA = a[userTableState.sortKey] || '';
+                let valB = b[userTableState.sortKey] || '';
+
+                if (userTableState.sortKey === 'supervisorAsignado') {
+                    valA = usersCache[valA]?.nombre || 'zzz';
+                    valB = usersCache[valB]?.nombre || 'zzz';
+                }
+
+                if (typeof valA === 'string') {
+                    valA = valA.toLowerCase();
+                    valB = valB.toLowerCase();
+                }
+
+                if (valA < valB) return userTableState.sortDirection === 'asc' ? -1 : 1;
+                if (valA > valB) return userTableState.sortDirection === 'asc' ? 1 : -1;
+                return 0;
             });
+            
+            // 3. Paginar
+            const totalPages = Math.ceil(filteredUsers.length / userTableState.rowsPerPage);
+            if (userTableState.currentPage > totalPages && totalPages > 0) {
+                userTableState.currentPage = totalPages;
+            }
+             if (userTableState.currentPage < 1) {
+                userTableState.currentPage = 1;
+            }
+            const startIndex = (userTableState.currentPage - 1) * userTableState.rowsPerPage;
+            const paginatedUsers = filteredUsers.slice(startIndex, startIndex + userTableState.rowsPerPage);
+
+            // 4. Renderizar
+            if (paginatedUsers.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-gray-500 py-4">No se encontraron usuarios.</td></tr>`;
+            } else {
+                paginatedUsers.forEach(user => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap">${user.nombre}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${user.id}</td>
+                        <td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.rol === 'supervisor' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}">${user.rol}</span></td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${user.supervisorAsignado ? usersCache[user.supervisorAsignado]?.nombre || 'N/A' : 'N/A'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button onclick="openUserModal('${user.id}')" class="text-indigo-600 hover:text-indigo-900">Editar</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+            
+            renderUserPagination(filteredUsers.length, totalPages);
+        }
+
+        function renderUserPagination(totalItems, totalPages) {
+            const paginationContainer = document.getElementById('userPagination');
+            if (totalPages <= 1) {
+                paginationContainer.innerHTML = '';
+                return;
+            }
+            const prevDisabled = userTableState.currentPage === 1 ? 'disabled' : '';
+            const nextDisabled = userTableState.currentPage === totalPages ? 'disabled' : '';
+
+            paginationContainer.innerHTML = `
+                <span>Mostrando ${Math.min(userTableState.rowsPerPage * (userTableState.currentPage - 1) + 1, totalItems)} - ${Math.min(userTableState.currentPage * userTableState.rowsPerPage, totalItems)} de ${totalItems}</span>
+                <div class="space-x-2">
+                    <button onclick="changeUserPage(-1)" ${prevDisabled} class="px-3 py-1 border rounded-lg bg-white disabled:opacity-50">Anterior</button>
+                    <span>Página ${userTableState.currentPage} de ${totalPages}</span>
+                    <button onclick="changeUserPage(1)" ${nextDisabled} class="px-3 py-1 border rounded-lg bg-white disabled:opacity-50">Siguiente</button>
+                </div>
+            `;
+        }
+
+        function changeUserPage(direction) {
+            userTableState.currentPage += direction;
+            renderUsersTable();
+        }
+
+        function sortUsers(key) {
+            if (userTableState.sortKey === key) {
+                userTableState.sortDirection = userTableState.sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                userTableState.sortKey = key;
+                userTableState.sortDirection = 'asc';
+            }
+            userTableState.currentPage = 1;
+            renderUsersTable();
         }
         
         function openUserModal(userId = null) {
@@ -1829,11 +1944,18 @@
             const labels = [];
             const data = [];
 
+            const supervisorAsesorIds = Object.values(usersCache)
+                .filter(u => u.supervisorAsignado === currentUser.id)
+                .map(u => u.id);
+
             querySnapshot.forEach(doc => {
                 const evalData = doc.data();
-                const asesorNombre = usersCache[evalData.asesorId]?.nombre || evalData.asesorId;
-                labels.push(asesorNombre);
-                data.push(parseFloat(evalData.calificacionGeneral) || 0);
+                // CORRECCIÓN: Filtrar para mostrar solo asesores asignados al supervisor actual
+                if (supervisorAsesorIds.includes(evalData.asesorId)) {
+                    const asesorNombre = usersCache[evalData.asesorId]?.nombre || evalData.asesorId;
+                    labels.push(asesorNombre);
+                    data.push(parseFloat(evalData.calificacionGeneral) || 0);
+                }
             });
             
             const ctx = document.getElementById('supervisorChart').getContext('2d');
@@ -1988,7 +2110,10 @@
                     tr.innerHTML = `
                         <td class="px-4 py-2 text-2xl">${badge.icono}</td>
                         <td class="px-4 py-2 font-medium">${badge.nombre}</td>
-                        <td class="px-4 py-2"><button onclick="openBadgeModal('${badge.id}')" class="text-indigo-600 hover:text-indigo-900 text-sm">Editar</button></td>
+                        <td class="px-4 py-2">
+                            <button onclick="openBadgeModal('${badge.id}')" class="text-indigo-600 hover:text-indigo-900 text-sm mr-2">Editar</button>
+                            <button onclick="deleteBadge('${badge.id}')" class="text-red-600 hover:text-red-900 text-sm">Eliminar</button>
+                        </td>
                     `;
                     tbody.appendChild(tr);
                 });
@@ -2074,8 +2199,13 @@
             showConfirmModal('Eliminar Insignia', '¿Estás seguro? Esta acción no se puede deshacer.', async () => {
                 await deleteDoc(doc(db, "insignias", badgeId));
                 await loadBadgesCache();
-                renderSupervisorBadgesTable();
-                showSyncIndicator('supervisorSyncIndicator');
+                if (currentUser.rol === 'superadmin') {
+                    renderGlobalBadgesTable();
+                    showSyncIndicator('superAdminSyncIndicator');
+                } else {
+                    renderSupervisorBadgesTable();
+                    showSyncIndicator('supervisorSyncIndicator');
+                }
             });
         }
         
@@ -2138,8 +2268,24 @@
             const querySnapshot = await getDocs(q);
 
             const earnedBadgeIds = new Set();
+            const badgeHistory = []; 
+
             querySnapshot.forEach(doc => {
-                (doc.data().insigniasOtorgadas || []).forEach(badgeId => earnedBadgeIds.add(badgeId));
+                const evalData = doc.data();
+                const period = `${evalData.month} ${evalData.year}`;
+                const supervisorName = usersCache[evalData.supervisorId]?.nombre || 'N/A';
+                (evalData.insigniasOtorgadas || []).forEach(badgeId => {
+                    earnedBadgeIds.add(badgeId);
+                    const badgeInfo = badgesCache[badgeId];
+                    if (badgeInfo) {
+                        badgeHistory.push({
+                            period: period,
+                            badge: badgeInfo,
+                            supervisor: supervisorName,
+                            date: new Date(evalData.year, availablePeriods.months.indexOf(evalData.month))
+                        });
+                    }
+                });
             });
             
             const earnedBadges = Array.from(earnedBadgeIds).map(id => badgesCache[id]).filter(Boolean);
@@ -2165,6 +2311,43 @@
                 html += '</div>';
             } else {
                  html += '<p class="text-gray-500">Aún no has ganado ninguna insignia. ¡Sigue esforzándote!</p>';
+            }
+
+            // Historial de Reconocimientos
+            html += '<h3 class="font-bold text-xl mt-8 mb-4">📜 Historial de Reconocimientos</h3>';
+            if (badgeHistory.length > 0) {
+                badgeHistory.sort((a, b) => b.date - a.date); // Sort by date descending
+                html += `
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Período</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Insignia</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Otorgada por</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                `;
+                badgeHistory.forEach(item => {
+                    html += `
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800">${item.period}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 flex items-center">
+                                <span class="text-2xl mr-2">${item.badge.icono}</span>
+                                ${item.badge.nombre}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.supervisor}</td>
+                        </tr>
+                    `;
+                });
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } else {
+                html += '<p class="text-gray-500">No hay un historial de insignias todavía.</p>';
             }
 
             html += '<h3 class="font-bold text-xl mt-8 mb-4">🔓 Próximas Insignias</h3>';
@@ -2216,6 +2399,9 @@
         window.exportSupervisorEvaluationsToCSV = exportSupervisorEvaluationsToCSV;
         window.loadSuperAdminCharts = loadSuperAdminCharts;
         window.loadSupervisorCharts = loadSupervisorCharts;
+        window.calculateWeightedScore = calculateWeightedScore;
+        window.sortUsers = sortUsers;
+        window.changeUserPage = changeUserPage;
         // Insignias
         window.openBadgeModal = openBadgeModal;
         window.closeBadgeModal = closeBadgeModal;
@@ -2223,6 +2409,40 @@
         window.openGrantBadgeModal = openGrantBadgeModal;
         window.closeGrantBadgeModal = closeGrantBadgeModal;
         window.exportBadgesToCSV = exportBadgesToCSV;
+        // Sincronización Manual
+        window.forceSyncToFirebase = async () => {
+             showConfirmModal('Sincronizar a Firebase', 'Esto sobrescribirá los datos en Firebase con los datos locales actuales. ¿Continuar?', async () => {
+                showSyncIndicator('superAdminSyncIndicator');
+                try {
+                    const batch = writeBatch(db);
+
+                    Object.values(usersCache).forEach(user => {
+                        const { id, ...userData } = user;
+                        const userRef = doc(db, "users", id);
+                        batch.set(userRef, userData);
+                    });
+
+                    Object.values(badgesCache).forEach(badge => {
+                        const { id, ...badgeData } = badge;
+                        const badgeRef = doc(db, "insignias", id);
+                        batch.set(badgeRef, badgeData);
+                    });
+                    
+                    await batch.commit();
+                    alert('Sincronización completada exitosamente.');
+                } catch (error) {
+                    console.error("Error al forzar la sincronización:", error);
+                    alert("Hubo un error durante la sincronización. Revisa la consola.");
+                }
+            });
+        };
+        window.forceReloadFromFirebase = async () => {
+            showSyncIndicator('superAdminSyncIndicator');
+            await loadUsersCache();
+            await loadBadgesCache();
+            await loadSuperAdminView();
+            alert('Datos recargados desde Firebase.');
+        };
 
 
     </script>
