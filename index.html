@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Evaluación de Desempeño - CNCI</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- NUEVO: Librería de Gráficos Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* Estilos personalizados para la aplicación */
         .gradient-bg {
@@ -159,8 +161,22 @@
                                 </table>
                             </div>
                         </div>
-                        <!-- Centro de Respaldo y Restauración -->
+                         <!-- NUEVA SECCIÓN: Analíticas Globales -->
                         <div class="bg-white rounded-lg shadow-lg p-6">
+                            <h2 class="text-lg font-bold mb-4">Analíticas Globales</h2>
+                            <div class="flex items-center space-x-4 mb-4">
+                                <select id="superAdminMonthSelector" class="rounded-lg border-gray-300 shadow-sm"></select>
+                                <select id="superAdminYearSelector" class="rounded-lg border-gray-300 shadow-sm"></select>
+                            </div>
+                            <div class="relative h-80">
+                                <canvas id="superAdminChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Columna Derecha -->
+                    <div>
+                        <!-- Centro de Respaldo y Restauración -->
+                        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
                             <h2 class="text-lg font-bold mb-4">Centro de Respaldo de Usuarios (CSV)</h2>
                             <p class="text-sm text-gray-600 mb-4">Exporta o importa la lista completa de usuarios de la aplicación.</p>
                             <div class="flex space-x-4">
@@ -168,9 +184,6 @@
                                 <button onclick="openImportModal('users')" class="flex-1 bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg">Importar Usuarios</button>
                             </div>
                         </div>
-                    </div>
-                    <!-- Columna Derecha -->
-                    <div>
                         <!-- Gestión de Títulos de Login -->
                         <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
                             <h2 class="text-lg font-bold mb-4">Personalizar Pantalla de Login</h2>
@@ -259,14 +272,27 @@
                             </div>
                         </div>
                     </div>
-                    <!-- Columna de Plantillas -->
-                    <div class="lg:col-span-2 bg-white rounded-lg shadow-lg p-6">
-                        <div class="flex justify-between items-center mb-4">
-                            <h2 class="text-lg font-bold">Plantilla de Evaluación</h2>
-                            <button onclick="openCategoryModal()" class="btn-primary text-white font-semibold py-2 px-4 rounded-lg">Añadir Categoría</button>
+                    <!-- Columna de Plantillas y Analíticas -->
+                    <div class="lg:col-span-2 space-y-6">
+                        <div class="bg-white rounded-lg shadow-lg p-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <h2 class="text-lg font-bold">Plantilla de Evaluación</h2>
+                                <button onclick="openCategoryModal()" class="btn-primary text-white font-semibold py-2 px-4 rounded-lg">Añadir Categoría</button>
+                            </div>
+                            <div id="categoriesContainer" class="space-y-4">
+                               <!-- Las categorías de la plantilla se cargarán aquí -->
+                            </div>
                         </div>
-                        <div id="categoriesContainer" class="space-y-4">
-                           <!-- Las categorías de la plantilla se cargarán aquí -->
+                        <!-- NUEVA SECCIÓN: Análisis del Equipo -->
+                        <div class="bg-white rounded-lg shadow-lg p-6">
+                            <h2 class="text-lg font-bold mb-4">Análisis del Equipo</h2>
+                            <div class="flex items-center space-x-4 mb-4">
+                                <select id="supervisorMonthSelector" class="rounded-lg border-gray-300 shadow-sm"></select>
+                                <select id="supervisorYearSelector" class="rounded-lg border-gray-300 shadow-sm"></select>
+                            </div>
+                            <div class="relative h-80">
+                                <canvas id="supervisorChart"></canvas>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -296,6 +322,8 @@
                 <div class="mb-6 border-b border-gray-200">
                     <nav class="flex space-x-8" aria-label="Tabs">
                         <button onclick="switchAsesorTab('resumen')" class="asesor-tab whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm border-blue-500 text-blue-600">Resumen General</button>
+                        <!-- HABILITADA LA PESTAÑA DE TENDENCIAS -->
+                        <button onclick="switchAsesorTab('tendencias')" class="asesor-tab whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Tendencias</button>
                         <button onclick="switchAsesorTab('insignias')" class="asesor-tab whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Insignias</button>
                         <button onclick="switchAsesorTab('plan')" class="asesor-tab whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Plan de Trabajo</button>
                     </nav>
@@ -305,6 +333,15 @@
                 <div id="asesorTabContent">
                     <!-- Pestaña Resumen -->
                     <div id="resumen-tab"></div>
+                    <!-- Pestaña Tendencias -->
+                    <div id="tendencias-tab" class="hidden">
+                        <div class="bg-white rounded-lg shadow-lg p-6">
+                             <h3 class="font-bold text-xl mb-4">Mi Progreso Anual</h3>
+                             <div class="relative h-80">
+                                <canvas id="asesorChart"></canvas>
+                             </div>
+                        </div>
+                    </div>
                     <!-- Pestaña Insignias -->
                     <div id="insignias-tab" class="hidden"></div>
                     <!-- Pestaña Plan de Trabajo -->
@@ -508,6 +545,11 @@
             years: [],
             months: []
         };
+        // NUEVO: Instancias de los gráficos
+        let superAdminChart = null;
+        let supervisorChart = null;
+        let asesorChart = null;
+
 
         // ======================= INICIALIZACIÓN DE LA APP =======================
         
@@ -612,6 +654,9 @@
                 document.getElementById('availableYearsInput').value = configData.availableYears?.join(', ') || '';
                 document.getElementById('availableMonthsInput').value = configData.availableMonths?.join(', ') || '';
             }
+            // NUEVO: Cargar gráficos
+            setupSuperAdminChartSelectors();
+            loadSuperAdminCharts();
         }
 
         function renderUsersTable() {
@@ -742,6 +787,9 @@
         async function loadSupervisorView() {
             renderAsesoresTable();
             await renderCategoryManagement();
+            // NUEVO: Cargar gráficos
+            setupSupervisorChartSelectors();
+            loadSupervisorCharts();
         }
 
         function renderAsesoresTable() {
@@ -1103,6 +1151,10 @@
             const button = document.querySelector(`.asesor-tab[onclick="switchAsesorTab('${tabName}')"]`);
             button.classList.add('border-blue-500', 'text-blue-600');
             button.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+
+            if (tabName === 'tendencias') {
+                renderAsesorCharts();
+            }
         };
 
         async function renderAsesorDashboard() {
@@ -1430,7 +1482,7 @@
                 return;
             }
             
-            const headers = lines[0].trim().split(',');
+            const headers = lines[0].trim().split(',').map(h => h.replace(/\r/g, ''));
             const batch = writeBatch(db);
             let operationsCount = 0;
 
@@ -1454,8 +1506,7 @@
                     if (overwrite) {
                         batch.set(userRef, userData);
                     } else {
-                         // Solo actualiza, no crea nuevos usuarios si no existen
-                        batch.update(userRef, userData);
+                         batch.set(userRef, userData, { merge: true });
                     }
                     operationsCount++;
                 }
@@ -1485,7 +1536,7 @@
                 return;
             }
 
-            const headers = lines[0].trim().split(',');
+            const headers = lines[0].trim().split(',').map(h => h.replace(/\r/g, ''));
             const batch = writeBatch(db);
             let operationsCount = 0;
 
@@ -1497,14 +1548,13 @@
                         return obj;
                     }, {});
 
-                    // CORRECCIÓN: Usar 'mes' y 'año' del CSV
                     if (!record.evalId && !(record.asesorId && record.año && record.mes)) continue;
                     
                     const evalId = record.evalId || `${record.asesorId}_${record.año}_${record.mes}`;
                     const evalRef = doc(db, "evaluations", evalId);
 
                     const evalData = {
-                        asesorId: record.asesorId, supervisorId: currentUser.id, month: record.mes, year: record.año, // CORRECCIÓN: 'month' y 'year'
+                        asesorId: record.asesorId, supervisorId: currentUser.id, month: record.mes, year: record.año,
                         calificacionGeneral: record.calificacionGeneral || '', metaLlamadas: record.metaLlamadas || '',
                         comentariosGenerales: record.comentariosGenerales || '', enlaceDetalles: record.enlaceDetalles || '',
                         enlacePlanTrabajo: record.enlacePlanTrabajo || '', textoPlanTrabajo: record.textoPlanTrabajo || '',
@@ -1535,7 +1585,7 @@
                     if (overwrite) {
                         batch.set(evalRef, evalData);
                     } else {
-                        batch.update(evalRef, evalData);
+                        batch.set(evalRef, evalData, { merge: true });
                     }
                     operationsCount++;
                 }
@@ -1548,6 +1598,165 @@
                 console.error("Error al importar evaluaciones CSV:", error);
                 alert("Error al importar el archivo de evaluaciones. Revisa la consola y asegúrate que el formato coincida con tu plantilla.");
             }
+        }
+
+
+        // ======================= NUEVAS FUNCIONES PARA GRÁFICOS =======================
+
+        function setupSupervisorChartSelectors() {
+            const monthSelect = document.getElementById('supervisorMonthSelector');
+            const yearSelect = document.getElementById('supervisorYearSelector');
+            const currentMonthName = new Date().toLocaleString('es-ES', { month: 'long' });
+            monthSelect.innerHTML = availablePeriods.months.map(m => `<option value="${m}" ${m.toLowerCase() === currentMonthName.toLowerCase() ? 'selected' : ''}>${m}</option>`).join('');
+            yearSelect.innerHTML = availablePeriods.years.map(y => `<option value="${y}">${y}</option>`).join('');
+            monthSelect.addEventListener('change', loadSupervisorCharts);
+            yearSelect.addEventListener('change', loadSupervisorCharts);
+        }
+        
+        async function loadSupervisorCharts() {
+            const month = document.getElementById('supervisorMonthSelector').value;
+            const year = document.getElementById('supervisorYearSelector').value;
+            const q = query(collection(db, "evaluations"), where("supervisorId", "==", currentUser.id), where("year", "==", year), where("month", "==", month));
+            const querySnapshot = await getDocs(q);
+            
+            const labels = [];
+            const data = [];
+
+            querySnapshot.forEach(doc => {
+                const evalData = doc.data();
+                const asesorNombre = usersCache[evalData.asesorId]?.nombre || evalData.asesorId;
+                labels.push(asesorNombre);
+                data.push(parseFloat(evalData.calificacionGeneral) || 0);
+            });
+            
+            const ctx = document.getElementById('supervisorChart').getContext('2d');
+            if (supervisorChart) {
+                supervisorChart.destroy();
+            }
+            supervisorChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Calificación General',
+                        data: data,
+                        backgroundColor: 'rgba(255, 133, 0, 0.6)',
+                        borderColor: 'rgba(255, 133, 0, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, max: 10 } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function setupSuperAdminChartSelectors() {
+            const monthSelect = document.getElementById('superAdminMonthSelector');
+            const yearSelect = document.getElementById('superAdminYearSelector');
+            const currentMonthName = new Date().toLocaleString('es-ES', { month: 'long' });
+            monthSelect.innerHTML = availablePeriods.months.map(m => `<option value="${m}" ${m.toLowerCase() === currentMonthName.toLowerCase() ? 'selected' : ''}>${m}</option>`).join('');
+            yearSelect.innerHTML = availablePeriods.years.map(y => `<option value="${y}">${y}</option>`).join('');
+            monthSelect.addEventListener('change', loadSuperAdminCharts);
+            yearSelect.addEventListener('change', loadSuperAdminCharts);
+        }
+
+        async function loadSuperAdminCharts() {
+            const month = document.getElementById('superAdminMonthSelector').value;
+            const year = document.getElementById('superAdminYearSelector').value;
+            const q = query(collection(db, "evaluations"), where("year", "==", year), where("month", "==", month));
+            const querySnapshot = await getDocs(q);
+            
+            const supervisorData = {}; // { supervisorId: { totalScore: X, count: Y } }
+            
+            querySnapshot.forEach(doc => {
+                const evalData = doc.data();
+                const supId = evalData.supervisorId;
+                if (!supId) return;
+
+                if (!supervisorData[supId]) {
+                    supervisorData[supId] = { totalScore: 0, count: 0 };
+                }
+                supervisorData[supId].totalScore += parseFloat(evalData.calificacionGeneral) || 0;
+                supervisorData[supId].count++;
+            });
+
+            const labels = [];
+            const data = [];
+            for (const supId in supervisorData) {
+                const supNombre = usersCache[supId]?.nombre || supId;
+                const avg = supervisorData[supId].count > 0 ? supervisorData[supId].totalScore / supervisorData[supId].count : 0;
+                labels.push(supNombre);
+                data.push(avg.toFixed(2));
+            }
+            
+            const ctx = document.getElementById('superAdminChart').getContext('2d');
+            if (superAdminChart) {
+                superAdminChart.destroy();
+            }
+            superAdminChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Calificación Promedio del Equipo',
+                        data: data,
+                        backgroundColor: 'rgba(42, 106, 255, 0.6)',
+                        borderColor: 'rgba(42, 106, 255, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, max: 10 } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+        
+        async function renderAsesorCharts() {
+            const year = document.getElementById('yearSelector').value;
+            const q = query(collection(db, "evaluations"), where("asesorId", "==", currentUser.id), where("year", "==", year));
+            const querySnapshot = await getDocs(q);
+
+            const monthlyScores = {}; // { Enero: 8.5, Febrero: 9.0 ... }
+            querySnapshot.forEach(doc => {
+                const evalData = doc.data();
+                monthlyScores[evalData.month] = parseFloat(evalData.calificacionGeneral) || 0;
+            });
+
+            const labels = availablePeriods.months;
+            const data = labels.map(month => monthlyScores[month] || null); // null para meses sin datos
+
+            const ctx = document.getElementById('asesorChart').getContext('2d');
+            if (asesorChart) {
+                asesorChart.destroy();
+            }
+            asesorChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Calificación General',
+                        data: data,
+                        borderColor: 'rgba(42, 106, 255, 1)',
+                        backgroundColor: 'rgba(42, 106, 255, 0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        spanGaps: true // Conecta la línea aunque falten meses
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, max: 10 } },
+                    plugins: { legend: { display: false } }
+                }
+            });
         }
 
 
@@ -1573,6 +1782,8 @@
         window.closeImportModal = closeImportModal;
         window.exportUsersToCSV = exportUsersToCSV;
         window.exportSupervisorEvaluationsToCSV = exportSupervisorEvaluationsToCSV;
+        window.loadSuperAdminCharts = loadSuperAdminCharts;
+        window.loadSupervisorCharts = loadSupervisorCharts;
 
 
     </script>
