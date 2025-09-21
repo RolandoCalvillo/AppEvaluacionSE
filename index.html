@@ -161,7 +161,7 @@
                                 </table>
                             </div>
                         </div>
-                         <!-- NUEVA SECCIÓN: Analíticas Globales -->
+                         <!-- Analíticas Globales -->
                         <div class="bg-white rounded-lg shadow-lg p-6">
                             <h2 class="text-lg font-bold mb-4">Analíticas Globales</h2>
                             <div class="flex items-center space-x-4 mb-4">
@@ -174,18 +174,9 @@
                         </div>
                     </div>
                     <!-- Columna Derecha -->
-                    <div>
-                        <!-- Centro de Respaldo y Restauración -->
-                        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
-                            <h2 class="text-lg font-bold mb-4">Centro de Respaldo de Usuarios (CSV)</h2>
-                            <p class="text-sm text-gray-600 mb-4">Exporta o importa la lista completa de usuarios de la aplicación.</p>
-                            <div class="flex space-x-4">
-                                <button onclick="exportUsersToCSV()" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg">Exportar Usuarios</button>
-                                <button onclick="openImportModal('users')" class="flex-1 bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg">Importar Usuarios</button>
-                            </div>
-                        </div>
-                        <!-- Gestión de Títulos de Login -->
-                        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+                    <div class="space-y-6">
+                         <!-- CORRECCIÓN: Sección de Títulos de Login Restaurada -->
+                        <div class="bg-white rounded-lg shadow-lg p-6">
                             <h2 class="text-lg font-bold mb-4">Personalizar Pantalla de Login</h2>
                             <div class="space-y-4">
                                 <div>
@@ -199,6 +190,45 @@
                             </div>
                             <div class="text-right mt-4">
                                 <button onclick="saveLoginTitles()" class="btn-secondary text-white font-semibold py-2 px-4 rounded-lg">Guardar Títulos</button>
+                            </div>
+                        </div>
+                        <!-- Centro de Respaldo y Restauración -->
+                        <div class="bg-white rounded-lg shadow-lg p-6">
+                            <h2 class="text-lg font-bold mb-4">Centro de Respaldo (CSV)</h2>
+                            <div class="space-y-4">
+                                <div>
+                                    <h3 class="font-semibold">Usuarios</h3>
+                                    <div class="flex space-x-2 mt-1">
+                                        <button onclick="exportUsersToCSV()" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg text-sm">Exportar</button>
+                                        <button onclick="openImportModal('users')" class="flex-1 bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg text-sm">Importar</button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h3 class="font-semibold">Insignias</h3>
+                                    <div class="flex space-x-2 mt-1">
+                                        <button onclick="exportBadgesToCSV()" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg text-sm">Exportar</button>
+                                        <button onclick="openImportModal('badges')" class="flex-1 bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg text-sm">Importar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                         <!-- Gestión de Insignias Globales -->
+                        <div class="bg-white rounded-lg shadow-lg p-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <h2 class="text-lg font-bold">Gestión de Insignias Globales</h2>
+                                <button onclick="openBadgeModal()" class="btn-secondary text-white font-semibold py-2 px-4 rounded-lg">Añadir Insignia</button>
+                            </div>
+                             <div class="overflow-x-auto max-h-60">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-100">
+                                        <tr>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Icono</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="globalBadgesTableBody" class="bg-white divide-y divide-gray-200"></tbody>
+                                </table>
                             </div>
                         </div>
                         <!-- Gestión de Períodos Hábiles -->
@@ -250,7 +280,7 @@
                                  <h2 class="text-lg font-bold">Mis Asesores</h2>
                                  <button onclick="openAddAsesorModal()" class="btn-primary text-white font-semibold py-2 px-4 rounded-lg text-sm">Añadir Asesor</button>
                             </div>
-                            <div class="overflow-x-auto">
+                            <div class="overflow-x-auto max-h-72">
                                 <table class="min-w-full divide-y divide-gray-200">
                                     <thead class="bg-gray-100">
                                         <tr>
@@ -274,6 +304,25 @@
                     </div>
                     <!-- Columna de Plantillas y Analíticas -->
                     <div class="lg:col-span-2 space-y-6">
+                         <!-- Gestión de Insignias del Supervisor -->
+                        <div class="bg-white rounded-lg shadow-lg p-6">
+                             <div class="flex justify-between items-center mb-4">
+                                <h2 class="text-lg font-bold">Gestión de Mis Insignias</h2>
+                                <button onclick="openBadgeModal(null, false)" class="btn-secondary text-white font-semibold py-2 px-4 rounded-lg">Añadir Mi Insignia</button>
+                            </div>
+                            <div class="overflow-x-auto max-h-60">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-100">
+                                        <tr>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Icono</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="supervisorBadgesTableBody" class="bg-white divide-y divide-gray-200"></tbody>
+                                </table>
+                            </div>
+                        </div>
                         <div class="bg-white rounded-lg shadow-lg p-6">
                             <div class="flex justify-between items-center mb-4">
                                 <h2 class="text-lg font-bold">Plantilla de Evaluación</h2>
@@ -283,7 +332,7 @@
                                <!-- Las categorías de la plantilla se cargarán aquí -->
                             </div>
                         </div>
-                        <!-- NUEVA SECCIÓN: Análisis del Equipo -->
+                        <!-- Análisis del Equipo -->
                         <div class="bg-white rounded-lg shadow-lg p-6">
                             <h2 class="text-lg font-bold mb-4">Análisis del Equipo</h2>
                             <div class="flex items-center space-x-4 mb-4">
@@ -322,7 +371,6 @@
                 <div class="mb-6 border-b border-gray-200">
                     <nav class="flex space-x-8" aria-label="Tabs">
                         <button onclick="switchAsesorTab('resumen')" class="asesor-tab whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm border-blue-500 text-blue-600">Resumen General</button>
-                        <!-- HABILITADA LA PESTAÑA DE TENDENCIAS -->
                         <button onclick="switchAsesorTab('tendencias')" class="asesor-tab whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Tendencias</button>
                         <button onclick="switchAsesorTab('insignias')" class="asesor-tab whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Insignias</button>
                         <button onclick="switchAsesorTab('plan')" class="asesor-tab whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Plan de Trabajo</button>
@@ -392,7 +440,7 @@
         </div>
     </div>
     
-    <!-- NUEVO MODAL: Añadir Asesor (Supervisor) -->
+    <!-- Modal: Añadir Asesor (Supervisor) -->
     <div id="addAsesorModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-lg p-6">
             <h3 class="text-xl font-bold mb-4">Añadir Nuevo Asesor</h3>
@@ -460,6 +508,10 @@
                             <select id="evaluationYear" class="mt-1 w-full border border-gray-300 rounded-lg p-2"></select>
                        </div>
                     </div>
+                    <!-- Botón para otorgar insignias -->
+                    <div class="text-center">
+                        <button type="button" onclick="openGrantBadgeModal()" class="btn-secondary text-white font-semibold py-2 px-6 rounded-lg">🏆 Otorgar Insignias</button>
+                    </div>
                     <!-- Contenedor para las categorías a evaluar -->
                     <div id="evaluationCategoriesContainer" class="space-y-4"></div>
                 </form>
@@ -515,12 +567,52 @@
         </div>
     </div>
 
+    <!-- MODAL: Añadir/Editar Insignia -->
+     <div id="badgeModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg p-6">
+            <h3 id="badgeModalTitle" class="text-xl font-bold mb-4">Añadir Insignia</h3>
+            <form id="badgeForm" class="space-y-4">
+                <input type="hidden" id="badgeId">
+                <input type="hidden" id="isGlobalBadge">
+                <div>
+                    <label class="block text-sm font-medium">Nombre de la Insignia</label>
+                    <input type="text" id="badgeName" class="mt-1 w-full border border-gray-300 rounded-lg p-2" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium">Icono (Emoji)</label>
+                    <input type="text" id="badgeIcon" class="mt-1 w-full border border-gray-300 rounded-lg p-2" placeholder="Ej: 🏆" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium">Descripción</label>
+                    <textarea id="badgeDescription" class="mt-1 w-full border border-gray-300 rounded-lg p-2" rows="3" required></textarea>
+                </div>
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button type="button" onclick="closeBadgeModal()" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="submit" class="btn-primary text-white font-semibold py-2 px-4 rounded-lg">Guardar Insignia</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Otorgar Insignias -->
+     <div id="grantBadgeModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-xl max-h-[80vh] flex flex-col p-6">
+            <h3 class="text-xl font-bold mb-4 flex-shrink-0">Otorgar Insignias</h3>
+            <div id="grantBadgeList" class="space-y-4 overflow-y-auto flex-grow pr-2">
+                <!-- Lista de insignias se cargará aquí -->
+            </div>
+            <div class="flex justify-end space-x-3 pt-6 flex-shrink-0">
+                <button type="button" onclick="closeGrantBadgeModal()" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
 
     <!-- SCRIPT PRINCIPAL DE LA APLICACIÓN -->
     <script type="module">
         // Importar funciones de Firebase 9+ (versión modular)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, query, where, writeBatch } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, query, where, writeBatch, serverTimestamp, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
         // Configuración de Firebase (proporcionada por el usuario)
         const firebaseConfig = {
@@ -541,14 +633,15 @@
         let currentUser = null;
         let usersCache = {};
         let supervisorsCache = [];
+        let badgesCache = {}; 
         let availablePeriods = {
             years: [],
             months: []
         };
-        // NUEVO: Instancias de los gráficos
         let superAdminChart = null;
         let supervisorChart = null;
         let asesorChart = null;
+        let currentEvaluationBadges = []; // CORRECCIÓN: Variable temporal para insignias
 
 
         // ======================= INICIALIZACIÓN DE LA APP =======================
@@ -560,6 +653,7 @@
                 loadingStatus.textContent = 'Conexión exitosa. Inicializando datos...';
                 await initializeDataIfNeeded();
                 await loadAvailablePeriods();
+                await loadBadgesCache(); 
                 loadingStatus.textContent = '¡Listo para iniciar!';
                 
                 setTimeout(() => {
@@ -646,6 +740,7 @@
         
         async function loadSuperAdminView() {
             renderUsersTable();
+            renderGlobalBadgesTable(); 
             const configDoc = await getDoc(doc(db, "system", "config"));
             if (configDoc.exists()) {
                 const configData = configDoc.data();
@@ -654,7 +749,6 @@
                 document.getElementById('availableYearsInput').value = configData.availableYears?.join(', ') || '';
                 document.getElementById('availableMonthsInput').value = configData.availableMonths?.join(', ') || '';
             }
-            // NUEVO: Cargar gráficos
             setupSuperAdminChartSelectors();
             loadSuperAdminCharts();
         }
@@ -787,7 +881,7 @@
         async function loadSupervisorView() {
             renderAsesoresTable();
             await renderCategoryManagement();
-            // NUEVO: Cargar gráficos
+            renderSupervisorBadgesTable(); 
             setupSupervisorChartSelectors();
             loadSupervisorCharts();
         }
@@ -984,6 +1078,9 @@
             const evalDoc = await getDoc(doc(db, "evaluations", evalId));
             const existingData = evalDoc.exists() ? evalDoc.data() : {};
             
+            // CORRECCIÓN: Inicializar la variable temporal de insignias
+            currentEvaluationBadges = existingData.insigniasOtorgadas || [];
+            
             container.innerHTML = '';
             
             container.innerHTML += `
@@ -1065,7 +1162,8 @@
                 enlacePlanTrabajo: document.getElementById('evalWorkPlanLink').value,
                 comentariosGenerales: document.getElementById('evalGeneralComments').value,
                 textoPlanTrabajo: document.getElementById('evalWorkPlanText').value,
-                categoriasEvaluadas: {}
+                categoriasEvaluadas: {},
+                insigniasOtorgadas: currentEvaluationBadges // CORRECCIÓN: Usar la variable temporal
             };
 
             const templateDoc = await getDoc(doc(db, "evaluation_templates", currentUser.id));
@@ -1113,7 +1211,7 @@
             });
 
             try {
-                await setDoc(doc(db, "evaluations", evalId), evaluationData);
+                await setDoc(doc(db, "evaluations", evalId), evaluationData, { merge: true });
                 showSyncIndicator('supervisorSyncIndicator');
                 closeEvaluationModal();
                 alert('Evaluación guardada exitosamente.');
@@ -1155,6 +1253,9 @@
             if (tabName === 'tendencias') {
                 renderAsesorCharts();
             }
+            if (tabName === 'insignias') {
+                renderAsesorBadges();
+            }
         };
 
         async function renderAsesorDashboard() {
@@ -1162,18 +1263,16 @@
             const year = document.getElementById('yearSelector').value;
             const evalId = `${currentUser.id}_${year}_${month}`;
             const resumenContainer = document.getElementById('resumen-tab');
-            const insigniasContainer = document.getElementById('insignias-tab');
-            const planContainer = document.getElementById('plan-tab');
-
+            
             resumenContainer.innerHTML = '<div class="skeleton h-64 w-full"></div>';
-            insigniasContainer.innerHTML = ''; 
-            planContainer.innerHTML = '';
-
+            
             try {
                 const evalDoc = await getDoc(doc(db, "evaluations", evalId));
             
                 if (!evalDoc.exists()) {
                     resumenContainer.innerHTML = `<div class="text-center p-10 bg-white rounded-lg shadow-lg"><h3 class="text-xl font-bold">Sin Evaluación</h3><p class="text-gray-600 mt-2">Aún no se ha cargado tu evaluación para ${month} de ${year}.</p></div>`;
+                    document.getElementById('plan-tab').innerHTML = '';
+                    document.getElementById('insignias-tab').innerHTML = '';
                     return;
                 }
 
@@ -1186,7 +1285,6 @@
                         const score = parseFloat(catData.puntaje || 0);
                         const scoreClass = score >= 9 ? 'score-high' : score >= 7 ? 'score-medium' : 'score-low';
 
-                        // MODIFICACIÓN: Crear lista de criterios
                         let criteriaHTMLList = '<p class="text-xs text-gray-500">No se evaluaron criterios específicos.</p>';
                         if (catData.criterios && Object.keys(catData.criterios).length > 0) {
                             criteriaHTMLList = Object.entries(catData.criterios).map(([critName, critScore]) => `
@@ -1208,7 +1306,6 @@
                                     <p><strong>Comentarios de Calidad:</strong> ${catData.comentarioCalidad || 'N/A'}</p>
                                     <p><strong>Comentarios de Supervisión:</strong> ${catData.comentarioSupervision || 'N/A'}</p>
                                 </div>
-                                <!-- NUEVA SECCIÓN PARA CRITERIOS -->
                                 <div class="mt-4">
                                     <button onclick="toggleCriteria(this)" class="flex items-center text-sm text-blue-600 font-semibold">
                                         <span>Ver Criterios</span>
@@ -1249,13 +1346,7 @@
                     </div>
                 `;
                 
-                insigniasContainer.innerHTML = `
-                <div class="bg-white rounded-lg shadow p-6">
-                    <h3 class="font-bold text-xl mb-4">Insignias Obtenidas</h3>
-                    <p class="text-gray-500">Esta sección estará disponible en futuras actualizaciones.</p>
-                </div>`;
-                
-                planContainer.innerHTML = `
+                document.getElementById('plan-tab').innerHTML = `
                      <div class="bg-white rounded-lg shadow p-6 text-center">
                          <h3 class="font-bold text-xl mb-4">Plan de Trabajo</h3>
                          <p class="text-gray-600 mb-6">${data.textoPlanTrabajo || 'Tu supervisor ha preparado un plan de trabajo para ti. Haz clic en el botón para verlo.'}</p>
@@ -1323,7 +1414,6 @@
             }
         }
         
-        // NUEVA FUNCIÓN PARA DESPLEGAR CRITERIOS EN DASHBOARD DE ASESOR
         function toggleCriteria(button) {
             const criteriaContent = button.nextElementSibling;
             const icon = button.querySelector('svg');
@@ -1365,7 +1455,7 @@
         function openImportModal(type) {
             document.getElementById('importDataType').value = type;
             document.getElementById('importForm').reset();
-            const title = type === 'users' ? 'Importar Usuarios' : 'Importar Evaluaciones';
+            const title = type === 'users' ? 'Importar Usuarios' : type === 'badges' ? 'Importar Insignias' : 'Importar Evaluaciones';
             document.getElementById('importExportTitle').textContent = title;
             document.getElementById('importExportModal').classList.remove('hidden');
         }
@@ -1386,7 +1476,7 @@
         }
 
         async function exportSupervisorEvaluationsToCSV() {
-            await loadUsersCache(); // Asegurarse de que el caché de usuarios esté actualizado
+            await loadUsersCache();
             const templateDoc = await getDoc(doc(db, "evaluation_templates", currentUser.id));
             if (!templateDoc.exists()) {
                 alert("No se puede exportar porque no tienes una plantilla de evaluación definida.");
@@ -1410,7 +1500,7 @@
             evaluationsSnapshot.forEach(doc => {
                 const e = doc.data();
                 const asesorNombre = usersCache[e.asesorId]?.nombre || 'N/A';
-                // CORRECCIÓN AQUÍ: Usar e.month y e.year en lugar de e.mes y e.año
+                
                 let row = [
                     doc.id, e.asesorId, `"${asesorNombre}"`, e.month, e.year,
                     e.calificacionGeneral || '', e.metaLlamadas || '',
@@ -1434,9 +1524,19 @@
 
             downloadCSV(csvContent, `evaluaciones_${currentUser.id}_respaldo.csv`);
         }
+        
+        async function exportBadgesToCSV() {
+            const badgesSnapshot = await getDocs(collection(db, "insignias"));
+            let csvContent = "id,nombre,icono,descripcion,tipo,creadorId\n";
+            badgesSnapshot.forEach(doc => {
+                const badge = doc.data();
+                const row = [doc.id, `"${badge.nombre}"`, `"${badge.icono}"`, `"${badge.descripcion}"`, badge.tipo, badge.creadorId || ''].join(',');
+                csvContent += row + "\n";
+            });
+            downloadCSV(csvContent, 'insignias_respaldo.csv');
+        }
 
         function downloadCSV(content, fileName) {
-            // CORRECCIÓN: Añadir BOM para compatibilidad con Excel y caracteres especiales
             const blob = new Blob(["\uFEFF" + content], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
             const url = URL.createObjectURL(blob);
@@ -1467,10 +1567,11 @@
                     await importUsersFromCSV(csvData);
                 } else if (dataType === 'evaluations') {
                     await importSupervisorEvaluationsFromCSV(csvData);
+                } else if (dataType === 'badges') { 
+                    await importBadgesFromCSV(csvData);
                 }
             };
             
-            // CORRECCIÓN: Especificar codificación UTF-8 al leer el archivo
             reader.readAsText(file, "UTF-8");
         });
 
@@ -1503,11 +1604,7 @@
                         supervisorAsignado: record.supervisorAsignado || null
                     };
                     
-                    if (overwrite) {
-                        batch.set(userRef, userData);
-                    } else {
-                         batch.set(userRef, userData, { merge: true });
-                    }
+                    batch.set(userRef, userData, { merge: !overwrite });
                     operationsCount++;
                 }
                 await batch.commit();
@@ -1582,11 +1679,7 @@
                         evalData.categoriasEvaluadas[catName] = catData;
                     });
                     
-                    if (overwrite) {
-                        batch.set(evalRef, evalData);
-                    } else {
-                        batch.set(evalRef, evalData, { merge: true });
-                    }
+                    batch.set(evalRef, evalData, { merge: !overwrite });
                     operationsCount++;
                 }
 
@@ -1597,6 +1690,49 @@
             } catch(error) {
                 console.error("Error al importar evaluaciones CSV:", error);
                 alert("Error al importar el archivo de evaluaciones. Revisa la consola y asegúrate que el formato coincida con tu plantilla.");
+            }
+        }
+        
+        async function importBadgesFromCSV(csvData) {
+            const overwrite = document.getElementById('overwriteDataCheckbox').checked;
+            const lines = csvData.split('\n').filter(line => line.trim());
+             if (lines.length < 2) {
+                alert('El archivo CSV de insignias está vacío o solo contiene la cabecera.');
+                return;
+            }
+            const headers = lines[0].trim().split(',').map(h => h.replace(/\r/g, ''));
+            const batch = writeBatch(db);
+            let operationsCount = 0;
+
+            try {
+                for (let i = 1; i < lines.length; i++) {
+                    const values = lines[i].trim().split(',');
+                    const record = headers.reduce((obj, header, index) => {
+                        obj[header] = values[index] ? values[index].replace(/"/g, '') : '';
+                        return obj;
+                    }, {});
+
+                    if (!record.id) continue;
+                    const badgeRef = doc(db, "insignias", record.id);
+                    const badgeData = {
+                        nombre: record.nombre || '',
+                        icono: record.icono || '',
+                        descripcion: record.descripcion || '',
+                        tipo: record.tipo || 'global',
+                        creadorId: record.creadorId || null
+                    };
+                    
+                    batch.set(badgeRef, badgeData, { merge: !overwrite });
+                    operationsCount++;
+                }
+                await batch.commit();
+                alert(`Se han procesado ${operationsCount} registros de insignias.`);
+                closeImportModal();
+                await loadBadgesCache();
+                renderGlobalBadgesTable();
+            } catch (error) {
+                console.error("Error al importar insignias CSV:", error);
+                alert("Error al importar el archivo de insignias. Revisa la consola.");
             }
         }
 
@@ -1759,6 +1895,232 @@
             });
         }
 
+        // ======================= NUEVAS FUNCIONES PARA INSIGNIAS =======================
+        
+        async function loadBadgesCache() {
+            badgesCache = {};
+            const querySnapshot = await getDocs(collection(db, "insignias"));
+            querySnapshot.forEach(doc => {
+                badgesCache[doc.id] = { id: doc.id, ...doc.data() };
+            });
+        }
+
+        function renderGlobalBadgesTable() {
+            const tbody = document.getElementById('globalBadgesTableBody');
+            tbody.innerHTML = '';
+            const globalBadges = Object.values(badgesCache).filter(b => b.tipo === 'global');
+            if (globalBadges.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="text-center text-gray-500 py-3">No hay insignias globales.</td></tr>`;
+            } else {
+                globalBadges.forEach(badge => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="px-4 py-2 text-2xl">${badge.icono}</td>
+                        <td class="px-4 py-2 font-medium">${badge.nombre}</td>
+                        <td class="px-4 py-2"><button onclick="openBadgeModal('${badge.id}')" class="text-indigo-600 hover:text-indigo-900 text-sm">Editar</button></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        }
+        
+        function renderSupervisorBadgesTable() {
+            const tbody = document.getElementById('supervisorBadgesTableBody');
+            tbody.innerHTML = '';
+            const supervisorBadges = Object.values(badgesCache).filter(b => b.creadorId === currentUser.id);
+            if (supervisorBadges.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="text-center text-gray-500 py-3">No has creado insignias.</td></tr>`;
+            } else {
+                supervisorBadges.forEach(badge => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="px-4 py-2 text-2xl">${badge.icono}</td>
+                        <td class="px-4 py-2 font-medium">${badge.nombre}</td>
+                        <td class="px-4 py-2">
+                             <button onclick="openBadgeModal('${badge.id}')" class="text-indigo-600 hover:text-indigo-900 text-sm mr-2">Editar</button>
+                             <button onclick="deleteBadge('${badge.id}')" class="text-red-600 hover:text-red-900 text-sm">Eliminar</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        }
+
+        function openBadgeModal(badgeId = null, isGlobal = true) {
+            document.getElementById('badgeForm').reset();
+            document.getElementById('badgeId').value = badgeId || '';
+            document.getElementById('isGlobalBadge').value = isGlobal;
+
+            if (badgeId) {
+                const badge = badgesCache[badgeId];
+                document.getElementById('badgeModalTitle').textContent = 'Editar Insignia';
+                document.getElementById('badgeName').value = badge.nombre;
+                document.getElementById('badgeIcon').value = badge.icono;
+                document.getElementById('badgeDescription').value = badge.descripcion;
+            } else {
+                document.getElementById('badgeModalTitle').textContent = isGlobal ? 'Añadir Insignia Global' : 'Añadir Mi Insignia';
+            }
+            document.getElementById('badgeModal').classList.remove('hidden');
+        }
+
+        function closeBadgeModal() {
+            document.getElementById('badgeModal').classList.add('hidden');
+        }
+        
+        document.getElementById('badgeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const badgeId = document.getElementById('badgeId').value;
+            const isGlobal = document.getElementById('isGlobalBadge').value === 'true';
+
+            const badgeData = {
+                nombre: document.getElementById('badgeName').value,
+                icono: document.getElementById('badgeIcon').value,
+                descripcion: document.getElementById('badgeDescription').value,
+                tipo: isGlobal ? 'global' : 'supervisor',
+                creadorId: isGlobal ? null : currentUser.id,
+                updatedAt: serverTimestamp()
+            };
+
+            if (badgeId) {
+                await setDoc(doc(db, "insignias", badgeId), badgeData, { merge: true });
+            } else {
+                badgeData.createdAt = serverTimestamp();
+                await addDoc(collection(db, "insignias"), badgeData);
+            }
+
+            await loadBadgesCache();
+            if (isGlobal) {
+                renderGlobalBadgesTable();
+                showSyncIndicator('superAdminSyncIndicator');
+            } else {
+                renderSupervisorBadgesTable();
+                 showSyncIndicator('supervisorSyncIndicator');
+            }
+            closeBadgeModal();
+        });
+
+        async function deleteBadge(badgeId) {
+            showConfirmModal('Eliminar Insignia', '¿Estás seguro? Esta acción no se puede deshacer.', async () => {
+                await deleteDoc(doc(db, "insignias", badgeId));
+                await loadBadgesCache();
+                renderSupervisorBadgesTable();
+                showSyncIndicator('supervisorSyncIndicator');
+            });
+        }
+        
+        async function openGrantBadgeModal() {
+            const listContainer = document.getElementById('grantBadgeList');
+            listContainer.innerHTML = '';
+
+            const availableBadges = Object.values(badgesCache).filter(b => b.tipo === 'global' || b.creadorId === currentUser.id);
+            const existingBadges = currentEvaluationBadges; // CORRECCIÓN: Usar la variable temporal
+
+            if (availableBadges.length === 0) {
+                 listContainer.innerHTML = '<p class="text-gray-500">No hay insignias disponibles para otorgar.</p>';
+            } else {
+                const globalBadges = availableBadges.filter(b => b.tipo === 'global');
+                const supervisorBadges = availableBadges.filter(b => b.creadorId === currentUser.id);
+
+                if(globalBadges.length > 0){
+                    listContainer.innerHTML += '<h4 class="font-bold text-gray-700 border-b pb-2 mb-2">🌐 Insignias Globales</h4>';
+                    globalBadges.forEach(badge => {
+                        listContainer.innerHTML += createBadgeCheckbox(badge, existingBadges);
+                    });
+                }
+                if(supervisorBadges.length > 0){
+                    listContainer.innerHTML += '<h4 class="font-bold text-gray-700 border-b pb-2 mb-2 mt-4">🧑‍🏫 Mis Insignias</h4>';
+                    supervisorBadges.forEach(badge => {
+                        listContainer.innerHTML += createBadgeCheckbox(badge, existingBadges);
+                    });
+                }
+            }
+            document.getElementById('grantBadgeModal').classList.remove('hidden');
+        }
+
+        function createBadgeCheckbox(badge, existingBadges) {
+            const isChecked = existingBadges.includes(badge.id);
+            return `
+                <div class="flex items-start p-3 border rounded-lg hover:bg-gray-50">
+                    <input type="checkbox" id="badge-check-${badge.id}" value="${badge.id}" class="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded" ${isChecked ? 'checked' : ''}>
+                    <label for="badge-check-${badge.id}" class="ml-3 flex-grow cursor-pointer">
+                        <span class="text-3xl">${badge.icono}</span>
+                        <span class="font-bold ml-2">${badge.nombre}</span>
+                        <p class="text-sm text-gray-600">${badge.descripcion}</p>
+                    </label>
+                </div>
+            `;
+        }
+
+        function closeGrantBadgeModal() {
+            // CORRECCIÓN: Guardar estado de checkboxes en la variable temporal al cerrar
+            currentEvaluationBadges = [];
+            document.querySelectorAll('#grantBadgeList input[type="checkbox"]:checked').forEach(checkbox => {
+                currentEvaluationBadges.push(checkbox.value);
+            });
+            document.getElementById('grantBadgeModal').classList.add('hidden');
+        }
+
+        async function renderAsesorBadges() {
+            const container = document.getElementById('insignias-tab');
+            container.innerHTML = '<div class="skeleton h-64 w-full"></div>';
+
+            const q = query(collection(db, "evaluations"), where("asesorId", "==", currentUser.id));
+            const querySnapshot = await getDocs(q);
+
+            const earnedBadgeIds = new Set();
+            querySnapshot.forEach(doc => {
+                (doc.data().insigniasOtorgadas || []).forEach(badgeId => earnedBadgeIds.add(badgeId));
+            });
+            
+            const earnedBadges = Array.from(earnedBadgeIds).map(id => badgesCache[id]).filter(Boolean);
+            const availableBadges = Object.values(badgesCache).filter(b => b.tipo === 'global' || b.creadorId === currentUser.supervisorAsignado);
+
+            let html = '<div class="bg-white p-6 rounded-lg shadow-lg">';
+            html += '<h3 class="font-bold text-xl mb-4">🏆 Mis Insignias Ganadas</h3>';
+            if (earnedBadges.length > 0) {
+                html += '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">';
+                earnedBadges.forEach(badge => {
+                    const badgeType = badge.tipo === 'global' ? 'Global 🌐' : 'Equipo 🧑‍🏫';
+                    html += `
+                        <div class="border p-4 rounded-lg flex items-start space-x-4">
+                            <span class="text-4xl">${badge.icono}</span>
+                            <div>
+                                <h4 class="font-bold">${badge.nombre}</h4>
+                                <p class="text-sm text-gray-600 mb-2">${badge.descripcion}</p>
+                                <span class="text-xs font-semibold px-2 py-1 rounded-full ${badge.tipo === 'global' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'}">${badgeType}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            } else {
+                 html += '<p class="text-gray-500">Aún no has ganado ninguna insignia. ¡Sigue esforzándote!</p>';
+            }
+
+            html += '<h3 class="font-bold text-xl mt-8 mb-4">🔓 Próximas Insignias</h3>';
+            const unearnedBadges = availableBadges.filter(b => !earnedBadgeIds.has(b.id));
+
+            if (unearnedBadges.length > 0) {
+                html += '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">';
+                unearnedBadges.forEach(badge => {
+                    html += `
+                        <div class="border p-4 rounded-lg flex items-start space-x-4 opacity-60">
+                            <span class="text-4xl filter grayscale">${badge.icono}</span>
+                            <div>
+                                <h4 class="font-bold">${badge.nombre}</h4>
+                                <p class="text-sm text-gray-600">${badge.descripcion}</p>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            } else {
+                 html += '<p class="text-gray-500">¡Felicidades! Has conseguido todas las insignias disponibles.</p>';
+            }
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
 
         // ======================= EXPOSICIÓN DE FUNCIONES GLOBALES =======================
         window.logout = logout;
@@ -1784,6 +2146,13 @@
         window.exportSupervisorEvaluationsToCSV = exportSupervisorEvaluationsToCSV;
         window.loadSuperAdminCharts = loadSuperAdminCharts;
         window.loadSupervisorCharts = loadSupervisorCharts;
+        // Insignias
+        window.openBadgeModal = openBadgeModal;
+        window.closeBadgeModal = closeBadgeModal;
+        window.deleteBadge = deleteBadge;
+        window.openGrantBadgeModal = openGrantBadgeModal;
+        window.closeGrantBadgeModal = closeGrantBadgeModal;
+        window.exportBadgesToCSV = exportBadgesToCSV;
 
 
     </script>
