@@ -326,6 +326,10 @@
                         <div class="bg-white rounded-lg shadow-lg p-6">
                             <div class="flex justify-between items-center mb-4">
                                 <h2 class="text-lg font-bold">Plantilla de Evaluación</h2>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-sm font-medium">Ponderación Total:</span>
+                                    <span id="totalPonderacion" class="font-bold text-lg">0%</span>
+                                </div>
                                 <button onclick="openCategoryModal()" class="btn-primary text-white font-semibold py-2 px-4 rounded-lg">Añadir Categoría</button>
                             </div>
                             <div id="categoriesContainer" class="space-y-4">
@@ -471,9 +475,15 @@
             <h3 id="categoryModalTitle" class="text-xl font-bold mb-4">Añadir Categoría</h3>
             <form id="categoryForm" class="space-y-4">
                 <input type="hidden" id="categoryId">
-                <div>
-                    <label class="block text-sm font-medium">Nombre de la Categoría</label>
-                    <input type="text" id="categoryName" class="mt-1 w-full border border-gray-300 rounded-lg p-2" required>
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium">Nombre de la Categoría</label>
+                        <input type="text" id="categoryName" class="mt-1 w-full border border-gray-300 rounded-lg p-2" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium">Ponderación (%)</label>
+                        <input type="number" id="categoryPonderacion" min="0" max="100" class="mt-1 w-full border border-gray-300 rounded-lg p-2" required>
+                    </div>
                 </div>
                 <div>
                     <h4 class="text-sm font-medium mb-2">Criterios de Evaluación</h4>
@@ -641,7 +651,7 @@
         let superAdminChart = null;
         let supervisorChart = null;
         let asesorChart = null;
-        let currentEvaluationBadges = []; // CORRECCIÓN: Variable temporal para insignias
+        let currentEvaluationBadges = []; 
 
 
         // ======================= INICIALIZACIÓN DE LA APP =======================
@@ -946,7 +956,7 @@
             const container = document.getElementById('categoriesContainer');
             container.innerHTML = '<div class="skeleton h-24 w-full"></div>';
             const templateDoc = await getDoc(doc(db, "evaluation_templates", currentUser.id));
-            const template = templateDoc.exists() ? templateDoc.data().categorias : [];
+            const template = templateDoc.exists() ? templateDoc.data().categorias || [] : [];
             container.innerHTML = '';
 
             if (template.length === 0) {
@@ -957,19 +967,20 @@
                     div.className = 'p-4 border rounded-lg';
                     div.innerHTML = `
                         <div class="flex justify-between items-center">
-                            <h4 class="font-bold">${cat.nombre}</h4>
+                            <h4 class="font-bold">${cat.nombre} <span class="text-sm font-normal text-gray-500">(${cat.ponderacion || 0}%)</span></h4>
                             <div>
                                 <button onclick="openCategoryModal(${index})" class="text-indigo-600 text-sm mr-2">Editar</button>
                                 <button onclick="deleteCategory(${index})" class="text-red-600 text-sm">Eliminar</button>
                             </div>
                         </div>
                         <ul class="list-disc list-inside mt-2 text-sm text-gray-600">
-                            ${cat.criterios.map(c => `<li>${c}</li>`).join('')}
+                            ${(cat.criterios || []).map(c => `<li>${c}</li>`).join('')}
                         </ul>
                     `;
                     container.appendChild(div);
                 });
             }
+            updatePonderacionTotal();
         }
 
         async function openCategoryModal(index = null) {
@@ -983,9 +994,11 @@
                 document.getElementById('categoryModalTitle').textContent = 'Editar Categoría';
                 document.getElementById('categoryId').value = index;
                 document.getElementById('categoryName').value = category.nombre;
-                category.criterios.forEach(c => addCriterionInput(c));
+                document.getElementById('categoryPonderacion').value = category.ponderacion || 0;
+                (category.criterios || []).forEach(c => addCriterionInput(c));
             } else {
                 document.getElementById('categoryModalTitle').textContent = 'Añadir Categoría';
+                document.getElementById('categoryId').value = '';
                 addCriterionInput();
             }
 
@@ -1011,6 +1024,7 @@
             const index = document.getElementById('categoryId').value;
             const newCategory = {
                 nombre: document.getElementById('categoryName').value,
+                ponderacion: parseInt(document.getElementById('categoryPonderacion').value) || 0,
                 criterios: [...document.querySelectorAll('#criteriaInputs input')].map(input => input.value).filter(val => val)
             };
             
@@ -1018,7 +1032,7 @@
             const templateDoc = await getDoc(templateRef);
             let categorias = templateDoc.exists() && Array.isArray(templateDoc.data().categorias) ? templateDoc.data().categorias : [];
 
-            if (index) {
+            if (index !== '') {
                 categorias[parseInt(index)] = newCategory;
             } else {
                 categorias.push(newCategory);
@@ -1041,6 +1055,16 @@
                 renderCategoryManagement();
             });
         };
+        
+        async function updatePonderacionTotal() {
+            const templateDoc = await getDoc(doc(db, "evaluation_templates", currentUser.id));
+            const categorias = templateDoc.exists() ? templateDoc.data().categorias || [] : [];
+            const total = categorias.reduce((sum, cat) => sum + (parseInt(cat.ponderacion) || 0), 0);
+            const totalEl = document.getElementById('totalPonderacion');
+            totalEl.textContent = `${total}%`;
+            totalEl.className = `font-bold text-lg ${total === 100 ? 'text-green-600' : 'text-red-600'}`;
+        }
+
 
         // ======================= LÓGICA DE EVALUACIÓN (SUPERVISOR) =======================
         
@@ -1078,7 +1102,6 @@
             const evalDoc = await getDoc(doc(db, "evaluations", evalId));
             const existingData = evalDoc.exists() ? evalDoc.data() : {};
             
-            // CORRECCIÓN: Inicializar la variable temporal de insignias
             currentEvaluationBadges = existingData.insigniasOtorgadas || [];
             
             container.innerHTML = '';
@@ -1089,7 +1112,7 @@
                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                            <label class="block text-sm font-medium">Calificación General (0-10)</label>
-                           <input type="number" id="evalGeneralScore" min="0" max="10" step="0.1" value="${existingData.calificacionGeneral || ''}" class="mt-1 w-full p-2 border rounded-lg">
+                           <input type="number" id="evalGeneralScore" value="${existingData.calificacionGeneral || ''}" class="mt-1 w-full p-2 border rounded-lg bg-gray-200" readonly>
                         </div>
                          <div>
                            <label class="block text-sm font-medium">Meta de Llamadas (%)</label>
@@ -1139,6 +1162,9 @@
                     </div>
                 `;
             });
+
+            container.addEventListener('input', calculateWeightedScore);
+            calculateWeightedScore(); // Initial calculation
         };
 
         document.getElementById('evaluationMonth').addEventListener('change', loadEvaluationFormData);
@@ -1163,7 +1189,7 @@
                 comentariosGenerales: document.getElementById('evalGeneralComments').value,
                 textoPlanTrabajo: document.getElementById('evalWorkPlanText').value,
                 categoriasEvaluadas: {},
-                insigniasOtorgadas: currentEvaluationBadges // CORRECCIÓN: Usar la variable temporal
+                insigniasOtorgadas: currentEvaluationBadges 
             };
 
             const templateDoc = await getDoc(doc(db, "evaluation_templates", currentUser.id));
@@ -1186,7 +1212,7 @@
                 let scoreCount = 0;
 
                 cat.criterios.forEach(critName => {
-                    const input = document.querySelector(`input[data-category="${catName}"][data-criterion="${critName}"]`);
+                    const input = document.querySelector(`#evaluationModal input[data-category="${catName}"][data-criterion="${critName}"]`);
                     if (input && input.value !== '') {
                         const score = parseFloat(input.value);
                         if (!isNaN(score)) {
@@ -1201,10 +1227,10 @@
                     catData.puntaje = (totalScore / scoreCount).toFixed(2);
                 }
 
-                const commentCalidad = document.querySelector(`textarea[data-category="${catName}"][name="comment_calidad"]`);
+                const commentCalidad = document.querySelector(`#evaluationModal textarea[data-category="${catName}"][name="comment_calidad"]`);
                 if (commentCalidad) catData.comentarioCalidad = commentCalidad.value;
                 
-                const commentSupervision = document.querySelector(`textarea[data-category="${catName}"][name="comment_supervision"]`);
+                const commentSupervision = document.querySelector(`#evaluationModal textarea[data-category="${catName}"][name="comment_supervision"]`);
                 if (commentSupervision) catData.comentarioSupervision = commentSupervision.value;
 
                 evaluationData.categoriasEvaluadas[catName] = catData;
@@ -1277,11 +1303,16 @@
                 }
 
                 const data = evalDoc.data();
+                const supervisorId = data.supervisorId;
+                const templateDoc = await getDoc(doc(db, "evaluation_templates", supervisorId));
+                const template = templateDoc.exists() ? templateDoc.data().categorias || [] : [];
                 
                 let categoriesHTML = '';
                 if (data.categoriasEvaluadas) {
                     for (const catName in data.categoriasEvaluadas) {
                         const catData = data.categoriasEvaluadas[catName];
+                        const categoryTemplate = template.find(t => t.nombre === catName);
+                        const ponderacion = categoryTemplate ? categoryTemplate.ponderacion : 0;
                         const score = parseFloat(catData.puntaje || 0);
                         const scoreClass = score >= 9 ? 'score-high' : score >= 7 ? 'score-medium' : 'score-low';
 
@@ -1299,7 +1330,7 @@
                         categoriesHTML += `
                             <div class="bg-white rounded-lg shadow p-4">
                                 <div class="flex justify-between items-start mb-2">
-                                    <h4 class="font-bold text-lg">${catName}</h4>
+                                    <h4 class="font-bold text-lg">${catName} <span class="text-sm font-normal text-gray-500">(Ponderación: ${ponderacion}%)</span></h4>
                                     <div class="score-circle ${scoreClass}">${score.toFixed(1)}</div>
                                 </div>
                                 <div class="text-sm space-y-2">
@@ -1737,6 +1768,46 @@
         }
 
 
+        // ======================= LÓGICA DE CÁLCULO DE PUNTAJES =======================
+        
+        async function calculateWeightedScore() {
+            const templateDoc = await getDoc(doc(db, "evaluation_templates", currentUser.id));
+            if (!templateDoc.exists()) return;
+            
+            const templateCategories = templateDoc.data().categorias || [];
+            let finalWeightedScore = 0;
+
+            templateCategories.forEach(cat => {
+                const ponderacion = cat.ponderacion || 0;
+                const criteriaInputs = document.querySelectorAll(`#evaluationModal input[data-category="${cat.nombre}"].criterion-score`);
+                
+                let totalScore = 0;
+                let scoreCount = 0;
+
+                criteriaInputs.forEach(input => {
+                    if (input.value !== '') {
+                        const score = parseFloat(input.value);
+                        if (!isNaN(score) && score >= 0 && score <= 10) {
+                            totalScore += score;
+                            scoreCount++;
+                        }
+                    }
+                });
+
+                if (scoreCount > 0) {
+                    const categoryAverage = totalScore / scoreCount;
+                    const weightedContribution = (categoryAverage / 10) * ponderacion;
+                    finalWeightedScore += weightedContribution;
+                }
+            });
+
+            const finalScoreOutOf10 = (finalWeightedScore / 10).toFixed(1);
+            const scoreInput = document.getElementById('evalGeneralScore');
+            if (scoreInput) {
+                scoreInput.value = finalScoreOutOf10;
+            }
+        }
+
         // ======================= NUEVAS FUNCIONES PARA GRÁFICOS =======================
 
         function setupSupervisorChartSelectors() {
@@ -2013,7 +2084,7 @@
             listContainer.innerHTML = '';
 
             const availableBadges = Object.values(badgesCache).filter(b => b.tipo === 'global' || b.creadorId === currentUser.id);
-            const existingBadges = currentEvaluationBadges; // CORRECCIÓN: Usar la variable temporal
+            const existingBadges = currentEvaluationBadges; 
 
             if (availableBadges.length === 0) {
                  listContainer.innerHTML = '<p class="text-gray-500">No hay insignias disponibles para otorgar.</p>';
@@ -2052,7 +2123,6 @@
         }
 
         function closeGrantBadgeModal() {
-            // CORRECCIÓN: Guardar estado de checkboxes en la variable temporal al cerrar
             currentEvaluationBadges = [];
             document.querySelectorAll('#grantBadgeList input[type="checkbox"]:checked').forEach(checkbox => {
                 currentEvaluationBadges.push(checkbox.value);
