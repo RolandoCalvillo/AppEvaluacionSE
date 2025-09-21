@@ -1336,6 +1336,7 @@
         }
 
         async function exportSupervisorEvaluationsToCSV() {
+            await loadUsersCache(); // Asegurarse de que el caché de usuarios esté actualizado
             const templateDoc = await getDoc(doc(db, "evaluation_templates", currentUser.id));
             if (!templateDoc.exists()) {
                 alert("No se puede exportar porque no tienes una plantilla de evaluación definida.");
@@ -1343,7 +1344,7 @@
             }
             const template = templateDoc.data().categorias || [];
             
-            let headers = ["evalId", "asesorId", "mes", "año", "calificacionGeneral", "metaLlamadas", "comentariosGenerales", "enlaceDetalles", "enlacePlanTrabajo", "textoPlanTrabajo"];
+            let headers = ["evalId", "asesorId", "asesorNombre", "mes", "año", "calificacionGeneral", "metaLlamadas", "comentariosGenerales", "enlaceDetalles", "enlacePlanTrabajo", "textoPlanTrabajo"];
             template.forEach(cat => {
                 cat.criterios.forEach(crit => {
                     headers.push(`${cat.nombre}_${crit}_Puntaje`);
@@ -1358,8 +1359,9 @@
 
             evaluationsSnapshot.forEach(doc => {
                 const e = doc.data();
+                const asesorNombre = usersCache[e.asesorId]?.nombre || 'N/A';
                 let row = [
-                    doc.id, e.asesorId, e.mes, e.año,
+                    doc.id, e.asesorId, `"${asesorNombre}"`, e.mes, e.año,
                     e.calificacionGeneral || '', e.metaLlamadas || '',
                     `"${(e.comentariosGenerales || '').replace(/"/g, '""')}"`,
                     `"${e.enlaceDetalles || ''}"`,
@@ -1383,7 +1385,8 @@
         }
 
         function downloadCSV(content, fileName) {
-            const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+            // CORRECCIÓN: Añadir BOM para compatibilidad con Excel y caracteres especiales
+            const blob = new Blob(["\uFEFF" + content], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
             const url = URL.createObjectURL(blob);
             link.setAttribute("href", url);
@@ -1416,7 +1419,8 @@
                 }
             };
             
-            reader.readAsText(file);
+            // CORRECCIÓN: Especificar codificación UTF-8 al leer el archivo
+            reader.readAsText(file, "UTF-8");
         });
 
         async function importUsersFromCSV(csvData) {
