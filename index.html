@@ -460,10 +460,7 @@
                 </div>
                 <div class="flex justify-end space-x-3 pt-4">
                     <button type="button" onclick="closeUserModal()" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg">Cancelar</button>
-                <button type="submit" id="saveUserBtn" class="btn-primary text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center">
-                    <span id="saveUserBtnText">Guardar</span>
-                    <div id="saveUserSpinner" class="hidden w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin ml-2"></div>
-                </button>
+                    <button type="submit" class="btn-primary text-white font-semibold py-2 px-4 rounded-lg">Guardar</button>
                     <button type="button" id="deleteUserBtn" onclick="deleteUser()" class="bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hidden">Eliminar</button>
                 </div>
             </form>
@@ -961,37 +958,21 @@
         });
 
         document.getElementById('userForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    // Elementos del botón
-    const saveBtn = document.getElementById('saveUserBtn');
-    const btnText = document.getElementById('saveUserBtnText');
-    const spinner = document.getElementById('saveUserSpinner');
+            e.preventDefault();
+            const userId = document.getElementById('userId').value;
+            const username = document.getElementById('userUsername').value.trim();
+            
+            if(!username){
+                alert("El nombre de usuario es obligatorio.");
+                return;
+            }
 
-    // Deshabilitar botón y mostrar spinner
-    saveBtn.disabled = true;
-    btnText.textContent = 'Guardando...';
-    spinner.classList.remove('hidden');
-
-    try {
-        // ...toda tu lógica para obtener datos...
-
-        await setDoc(doc(db, "users", docId), userData);
-        showSyncIndicator('superAdminSyncIndicator');
-        closeUserModal();
-        await loadUsersCache();
-        renderUsersTable();
-
-    } catch (error) {
-        console.error("Error al guardar usuario:", error);
-        alert("Hubo un error al guardar el usuario."); // Informar al usuario del error
-    } finally {
-        // Volver a habilitar el botón y ocultar spinner (esto se ejecuta siempre, incluso si hay un error)
-        saveBtn.disabled = false;
-        btnText.textContent = 'Guardar';
-        spinner.classList.add('hidden');
-    }
-});
+            if (!userId) { // Solo validar si es un usuario nuevo
+                if (usersCache[username]) {
+                    alert("Este nombre de usuario ya existe. Por favor, elige otro.");
+                    return;
+                }
+            }
 
             const userData = {
                 nombre: document.getElementById('userFullName').value,
@@ -2484,4 +2465,3 @@
     </script>
 </body>
 </html>
-
