@@ -1276,7 +1276,7 @@
                 const criteriaHTML = cat.criterios.map(crit => `
                      <div class="grid grid-cols-3 gap-2 items-center">
                         <label class="text-sm col-span-2">${crit}</label>
-                        <input type="number" min="0" max="10" data-category="${cat.nombre}" data-criterion="${crit}" value="${catData.criterios ? catData.criterios[crit] || '' : ''}" class="criterion-score w-full p-1 border rounded-lg text-center">
+                        <input type="number" min="0" max="10" data-category="${cat.nombre}" data-criterion="${crit}" value="${(catData.criterios && catData.criterios[crit] !== undefined) ? catData.criterios[crit] : ''}" class="criterion-score w-full p-1 border rounded-lg text-center">
                      </div>
                 `).join('');
 
