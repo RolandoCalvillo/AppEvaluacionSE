@@ -1950,7 +1950,6 @@
 
             querySnapshot.forEach(doc => {
                 const evalData = doc.data();
-                // CORRECCIÓN: Filtrar para mostrar solo asesores asignados al supervisor actual
                 if (supervisorAsesorIds.includes(evalData.asesorId)) {
                     const asesorNombre = usersCache[evalData.asesorId]?.nombre || evalData.asesorId;
                     labels.push(asesorNombre);
