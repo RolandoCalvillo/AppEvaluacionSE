@@ -1842,7 +1842,32 @@
                         catData.comentarioSupervision = record[`${catName}_ComentarioSupervision`] || '';
                         evalData.categoriasEvaluadas[catName] = catData;
                     });
-                    
+                // =========================================================
+                // INICIO DEL CÓDIGO CORREGIDO
+                // =========================================================
+
+                // 1. Inicia el cálculo de la calificación ponderada
+                let finalWeightedScore = 0;
+
+                template.forEach(cat => {
+                    const ponderacion = cat.ponderacion || 0;
+                    const catData = evalData.categoriasEvaluadas[cat.nombre];
+
+                    if (catData && catData.puntaje) {
+                        const categoryAverage = parseFloat(catData.puntaje);
+                        const weightedContribution = (categoryAverage / 10) * ponderacion;
+                        finalWeightedScore += weightedContribution;
+                    }
+                });
+
+                // 2. Convierte el puntaje a una escala del 0-10 y lo asigna
+                // Si el CSV ya traía una calificación, se usará esa. Si no, se usa la calculada.
+                if (!evalData.calificacionGeneral) {
+                    evalData.calificacionGeneral = (finalWeightedScore / 10).toFixed(1);
+                }
+                // =========================================================
+                // FIN DEL CÓDIGO CORREGIDO
+                // =========================================================
                     batch.set(evalRef, evalData, { merge: !overwrite });
                     operationsCount++;
                 }
