@@ -691,6 +691,23 @@
                 await getDoc(doc(db, "system", "health_check"));
                 loadingStatus.textContent = 'Conexión exitosa. Inicializando datos...';
                 await initializeDataIfNeeded();
+                // =========================================================
+                // INICIO DEL CÓDIGO AGREGADO PARA LA CORRECCIÓN
+                // =========================================================
+                // Cargar y aplicar los títulos personalizados del login
+                const configDoc = await getDoc(doc(db, "system", "config"));
+                if (configDoc.exists()) {
+                    const configData = configDoc.data();
+                    if (configData.loginTitle) {
+                        document.getElementById('loginTitle').textContent = configData.loginTitle;
+                    }
+                    if (configData.loginSubtitle) {
+                        document.getElementById('loginSubtitle').textContent = configData.loginSubtitle;
+                    }
+                }
+                // =========================================================
+                // FIN DEL CÓDIGO AGREGADO
+                // =========================================================
                 await loadAvailablePeriods();
                 await loadBadgesCache(); 
                 loadingStatus.textContent = '¡Listo para iniciar!';
