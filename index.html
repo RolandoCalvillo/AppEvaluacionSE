@@ -1647,13 +1647,16 @@
                 return;
             }
             const template = templateDoc.data().categorias || [];
-            
+            // CÓDIGO MODIFICADO Y CORREGIDO
             let headers = ["evalId", "asesorId", "asesorNombre", "mes", "año", "calificacionGeneral", "metaLlamadas", "comentariosGenerales", "enlaceDetalles", "enlacePlanTrabajo", "textoPlanTrabajo"];
             template.forEach(cat => {
                 cat.criterios.forEach(crit => {
-                    headers.push(`${cat.nombre}_${crit}_Puntaje`);
+                    // MODIFICACIÓN: Se envuelve la cabecera en comillas para soportar comas.
+                    const cleanCrit = crit.replace(/"/g, '""'); // Escapa comillas internas.
+                    headers.push(`"${cat.nombre}_${cleanCrit}_Puntaje"`);
                 });
-                headers.push(`${cat.nombre}_ComentarioCalidad`, `${cat.nombre}_ComentarioSupervision`);
+                // También se entrecomillan estas cabeceras por consistencia.
+                headers.push(`"${cat.nombre}_ComentarioCalidad"`, `"${cat.nombre}_ComentarioSupervision"`);
             });
             
             const q = query(collection(db, "evaluations"), where("supervisorId", "==", currentUser.id));
@@ -1739,48 +1742,48 @@
             reader.readAsText(file, "UTF-8");
         });
 
-        async function importUsersFromCSV(csvData) {
-            const overwrite = document.getElementById('overwriteDataCheckbox').checked;
-            const lines = csvData.split('\n').filter(line => line.trim());
-            if (lines.length < 2) {
-                alert('El archivo CSV está vacío o solo contiene la cabecera.');
-                return;
-            }
+async function importUsersFromCSV(csvData) {
+    const overwrite = document.getElementById('overwriteDataCheckbox').checked;
+    const lines = csvData.split('\n').filter(line => line.trim());
+    if (lines.length < 2) {
+        alert('El archivo CSV está vacío o solo contiene la cabecera.');
+        return;
+    }
+    
+    const headers = lines[0].trim().split(',').map(h => h.replace(/\r/g, ''));
+    const batch = writeBatch(db);
+    let operationsCount = 0;
+
+    try {
+        for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].trim().split(',');
+            const record = headers.reduce((obj, header, index) => {
+                obj[header] = values[index] ? values[index].replace(/"/g, '') : '';
+                return obj;
+            }, {});
+
+            if (!record.username) continue;
+            const userRef = doc(db, "users", record.username);
+            const userData = {
+                nombre: record.nombre || '',
+                rol: record.rol || 'asesor',
+                password: record.password || '123',
+                supervisorAsignado: record.supervisorAsignado || null
+            };
             
-            const headers = lines[0].trim().split(',').map(h => h.replace(/\r/g, ''));
-            const batch = writeBatch(db);
-            let operationsCount = 0;
-
-            try {
-                for (let i = 1; i < lines.length; i++) {
-                    const values = lines[i].trim().split(',');
-                    const record = headers.reduce((obj, header, index) => {
-                        obj[header] = values[index] ? values[index].replace(/"/g, '') : '';
-                        return obj;
-                    }, {});
-
-                    if (!record.username) continue;
-                    const userRef = doc(db, "users", record.username);
-                    const userData = {
-                        nombre: record.nombre || '',
-                        rol: record.rol || 'asesor',
-                        password: record.password || '123',
-                        supervisorAsignado: record.supervisorAsignado || null
-                    };
-                    
-                    batch.set(userRef, userData, { merge: !overwrite });
-                    operationsCount++;
-                }
-                await batch.commit();
-                alert(`Se han procesado ${operationsCount} registros de usuarios.`);
-                closeImportModal();
-                await loadUsersCache();
-                renderUsersTable();
-            } catch (error) {
-                console.error("Error al importar usuarios CSV:", error);
-                alert("Error al importar el archivo de usuarios. Revisa la consola.");
-            }
+            batch.set(userRef, userData, { merge: !overwrite });
+            operationsCount++;
         }
+        await batch.commit();
+        alert(`Se han procesado ${operationsCount} registros de usuarios.`);
+        closeImportModal();
+        await loadUsersCache();
+        renderUsersTable();
+    } catch (error) {
+        console.error("Error al importar usuarios CSV:", error);
+        alert("Error al importar el archivo de usuarios. Revisa la consola.");
+    }
+}
 
         async function importSupervisorEvaluationsFromCSV(csvData) {
             const overwrite = document.getElementById('overwriteDataCheckbox').checked;
