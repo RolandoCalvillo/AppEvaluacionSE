@@ -682,7 +682,24 @@
             currentPage: 1,
             rowsPerPage: 15
         };
-
+// FUNCIÓN NUEVA PARA AÑADIR
+        function parseCSVLine(line) {
+            const values = [];
+            // Expresión regular para separar por comas, respetando texto entrecomillado.
+            const regex = /(?:"([^"]*(?:""[^"]*)*)"|([^,]*))(?:,|$)/g;
+            if (!line || !line.trim()) {
+                return [];
+            }
+            let match;
+            while (match = regex.exec(line)) {
+                let value = match[1] !== undefined 
+                    ? match[1].replace(/""/g, '"') // <-- CORRECCIÓN APLICADA
+                    : match[2]; 
+                values.push(value);
+                if (match[0].slice(-1) !== ',') break; // Fin de la línea
+            }
+            return values;
+        }
 
         // ======================= INICIALIZACIÓN DE LA APP =======================
         
@@ -1750,17 +1767,23 @@ async function importUsersFromCSV(csvData) {
         return;
     }
     
-    const headers = lines[0].trim().split(',').map(h => h.replace(/\r/g, ''));
+    const headers = parseCSVLine(lines[0]);
     const batch = writeBatch(db);
     let operationsCount = 0;
 
     try {
-        for (let i = 1; i < lines.length; i++) {
-            const values = lines[i].trim().split(',');
-            const record = headers.reduce((obj, header, index) => {
-                obj[header] = values[index] ? values[index].replace(/"/g, '') : '';
-                return obj;
-            }, {});
+    // 1. Se crea una versión de las cabeceras sin comillas.
+    const cleanHeaders = headers.map(h => h.replace(/"/g, ''));
+
+    for (let i = 1; i < lines.length; i++) {
+        const values = parseCSVLine(lines[i]);
+        
+        // 2. Se usa 'cleanHeaders' para crear el objeto.
+        const record = cleanHeaders.reduce((obj, header, index) => {
+            // 3. La asignación es más simple, sin .replace().
+            obj[header] = values[index] || ''; 
+            return obj;
+        }, {});
 
             if (!record.username) continue;
             const userRef = doc(db, "users", record.username);
