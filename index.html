@@ -5,9 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Evaluación de Desempeño - CNCI</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- NUEVO: Librería de Gráficos Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="icon" href="https://i.postimg.cc/KzxV7m0Z/CNCI-VIRTUAL-LOGO.jpg" type="image/x-icon">
     <style>
         /* Estilos personalizados para la aplicación */
         .gradient-bg {
@@ -22,26 +21,38 @@
         }
         .btn-primary {
             background-color: #2a6aff;
-            transition: background-color 0.3s ease, transform 0.2s ease;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         .btn-primary:hover {
             background-color: #1a5bff;
             transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
         }
         .btn-secondary {
             background-color: #ff8500;
-             transition: background-color 0.3s ease, transform 0.2s ease;
+             transition: all 0.3s ease;
+             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         .btn-secondary:hover {
             background-color: #f07d00;
             transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
         }
+        
         /* Animaciones */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
         .fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in-up { animation: fadeInUp 0.6s ease-out forwards; }
+
 
         /* Estilos para la barra de progreso */
         .progress-bar-container { background-color: #e9ecef; border-radius: 9999px; }
@@ -50,12 +61,22 @@
             transition: width 0.5s ease-in-out;
             border-radius: 9999px;
         }
+         .progress-bar-orange {
+            background: linear-gradient(90deg, #ff8500, #ffac5c);
+            transition: width 0.5s ease-in-out;
+            border-radius: 9999px;
+        }
+        
         /* Estilos para el círculo de puntaje */
         .score-circle {
             width: 50px; height: 50px; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
             font-weight: bold; color: white;
             flex-shrink: 0;
+            transition: transform 0.3s ease;
+        }
+        .score-circle:hover {
+            transform: scale(1.1);
         }
         .score-high { background-color: #10b981; } /* Verde */
         .score-medium { background-color: #f59e0b; } /* Amarillo */
@@ -65,10 +86,22 @@
         .criteria-toggle { transition: transform 0.3s ease; }
         .rotated { transform: rotate(180deg); }
 
+        /* NUEVO: Transición suave para el contenedor de criterios */
+        .criteria-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out, margin-top 0.5s ease-in-out;
+        }
+        .criteria-content.open {
+            max-height: 500px; /* Suficientemente grande */
+            margin-top: 1rem;
+        }
+
+
         /* Estilos del SKELETON LOADER para una mejor UX */
         .skeleton {
             background-color: #e2e8f0;
-            border-radius: 0.25rem;
+            border-radius: 0.5rem;
             animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
         @keyframes pulse {
@@ -86,6 +119,14 @@
         }
         .th-sortable:hover {
             background-color: #f0f4f8;
+        }
+        
+        /* NUEVO: Hover para filas de tabla */
+        #asesoresTableBody tr:hover, #supervisorBadgesTableBody tr:hover {
+            background-color: #eff6ff; /* bg-blue-50 */
+        }
+        #usersTableBody tr:hover {
+             background-color: #f7fafc; /* bg-gray-50 */
         }
     </style>
 </head>
@@ -279,7 +320,7 @@
         <!-- Vista SUPERVISOR -->
         <div id="supervisorScreen" class="hidden h-screen flex flex-col">
             <!-- Header -->
-            <header class="bg-white shadow-md p-4 flex justify-between items-center z-10 flex-shrink-0">
+            <header class="bg-white shadow-sm p-4 flex justify-between items-center z-10 flex-shrink-0 border-b">
                  <div class="flex items-center space-x-3">
                     <img src="https://i.postimg.cc/KzxV7m0Z/CNCI-VIRTUAL-LOGO.jpg" alt="Logo CNCI" class="h-10 w-auto">
                     <h1 class="text-xl font-bold text-gray-800">🧑‍🏫 Panel de Supervisor</h1>
@@ -294,80 +335,90 @@
                 </div>
             </header>
              <!-- Contenido -->
-            <main class="flex-grow p-6 overflow-y-auto bg-gray-50">
+            <main class="flex-grow p-6 overflow-y-auto bg-slate-50">
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <!-- Columna de Asesores y Respaldo -->
-                    <div class="lg:col-span-1 space-y-6">
-                        <div class="bg-white rounded-lg shadow-lg p-6">
-                            <div class="flex justify-between items-center mb-4">
-                                 <h2 class="text-lg font-bold">Mis Asesores</h2>
-                                 <button onclick="openAddAsesorModal()" class="btn-primary text-white font-semibold py-2 px-4 rounded-lg text-sm">Añadir Asesor</button>
-                            </div>
-                            <div class="overflow-x-auto max-h-72">
-                                <table class="min-w-full divide-y divide-gray-200">
-                                    <thead class="bg-gray-100">
-                                        <tr>
-                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
-                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="asesoresTableBody" class="bg-white divide-y divide-gray-200"></tbody>
-                                </table>
+                    <div class="lg:col-span-1 space-y-6 fade-in-up">
+                        <div class="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border-t-4 border-blue-500">
+                            <div class="p-6">
+                                <div class="flex justify-between items-center mb-4">
+                                     <h2 class="text-lg font-bold text-gray-800">👥 Mis Asesores</h2>
+                                     <button onclick="openAddAsesorModal()" class="btn-primary text-white font-semibold py-2 px-4 rounded-lg text-sm">Añadir Asesor</button>
+                                </div>
+                                <div class="overflow-x-auto max-h-72">
+                                    <table class="min-w-full divide-y divide-gray-200">
+                                        <thead class="bg-slate-100">
+                                            <tr>
+                                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
+                                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="asesoresTableBody" class="bg-white divide-y divide-gray-200"></tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                         <!-- Centro de Respaldo para Supervisor -->
-                        <div class="bg-white rounded-lg shadow-lg p-6">
-                            <h2 class="text-lg font-bold mb-4">Respaldo de Evaluaciones (CSV)</h2>
-                            <p class="text-sm text-gray-600 mb-4">Exporta o importa las evaluaciones de tus asesores. El formato se basará en tu plantilla actual.</p>
+                        <div class="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border-t-4 border-orange-500">
+                           <div class="p-6">
+                             <h2 class="text-lg font-bold mb-4 text-gray-800">💾 Respaldo de Evaluaciones</h2>
+                            <p class="text-sm text-gray-600 mb-4">Exporta o importa las evaluaciones de tus asesores en formato CSV.</p>
                             <div class="flex space-x-4">
-                                <button onclick="exportSupervisorEvaluationsToCSV()" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg">Exportar</button>
-                                <button onclick="openImportModal('evaluations')" class="flex-1 bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg">Importar</button>
+                                <button onclick="exportSupervisorEvaluationsToCSV()" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition-transform hover:scale-105">Exportar</button>
+                                <button onclick="openImportModal('evaluations')" class="flex-1 bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg transition-transform hover:scale-105">Importar</button>
                             </div>
+                           </div>
                         </div>
                     </div>
                     <!-- Columna de Plantillas y Analíticas -->
-                    <div class="lg:col-span-2 space-y-6">
+                    <div class="lg:col-span-2 space-y-6 fade-in-up" style="animation-delay: 0.2s;">
                          <!-- Gestión de Insignias del Supervisor -->
-                        <div class="bg-white rounded-lg shadow-lg p-6">
-                             <div class="flex justify-between items-center mb-4">
-                                <h2 class="text-lg font-bold">Gestión de Mis Insignias</h2>
-                                <button onclick="openBadgeModal(null, false)" class="btn-secondary text-white font-semibold py-2 px-4 rounded-lg">Añadir Mi Insignia</button>
-                            </div>
-                            <div class="overflow-x-auto max-h-60">
-                                <table class="min-w-full divide-y divide-gray-200">
-                                    <thead class="bg-gray-100">
-                                        <tr>
-                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Icono</th>
-                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
-                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="supervisorBadgesTableBody" class="bg-white divide-y divide-gray-200"></tbody>
-                                </table>
+                        <div class="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border-t-4 border-blue-500">
+                            <div class="p-6">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h2 class="text-lg font-bold text-gray-800">🎖️ Gestión de Mis Insignias</h2>
+                                    <button onclick="openBadgeModal(null, false)" class="btn-secondary text-white font-semibold py-2 px-4 rounded-lg">Añadir Insignia</button>
+                                </div>
+                                <div class="overflow-x-auto max-h-60">
+                                    <table class="min-w-full divide-y divide-gray-200">
+                                        <thead class="bg-slate-100">
+                                            <tr>
+                                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Icono</th>
+                                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
+                                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="supervisorBadgesTableBody" class="bg-white divide-y divide-gray-200"></tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
-                        <div class="bg-white rounded-lg shadow-lg p-6">
-                            <div class="flex justify-between items-center mb-4">
-                                <h2 class="text-lg font-bold">Plantilla de Evaluación</h2>
-                                <div class="flex items-center space-x-2">
-                                    <span class="text-sm font-medium">Ponderación Total:</span>
-                                    <span id="totalPonderacion" class="font-bold text-lg">0%</span>
+                        <div class="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border-t-4 border-orange-500">
+                            <div class="p-6">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h2 class="text-lg font-bold text-gray-800">📝 Plantilla de Evaluación</h2>
+                                    <div class="flex items-center space-x-2">
+                                        <span class="text-sm font-medium">Ponderación Total:</span>
+                                        <span id="totalPonderacion" class="font-bold text-lg">0%</span>
+                                    </div>
+                                    <button onclick="openCategoryModal()" class="btn-primary text-white font-semibold py-2 px-4 rounded-lg">Añadir Categoría</button>
                                 </div>
-                                <button onclick="openCategoryModal()" class="btn-primary text-white font-semibold py-2 px-4 rounded-lg">Añadir Categoría</button>
-                            </div>
-                            <div id="categoriesContainer" class="space-y-4">
-                               <!-- Las categorías de la plantilla se cargarán aquí -->
+                                <div id="categoriesContainer" class="space-y-4">
+                                   <!-- Las categorías de la plantilla se cargarán aquí -->
+                                </div>
                             </div>
                         </div>
                         <!-- Análisis del Equipo -->
-                        <div class="bg-white rounded-lg shadow-lg p-6">
-                            <h2 class="text-lg font-bold mb-4">Análisis del Equipo</h2>
-                            <div class="flex items-center space-x-4 mb-4">
-                                <select id="supervisorMonthSelector" class="rounded-lg border-gray-300 shadow-sm"></select>
-                                <select id="supervisorYearSelector" class="rounded-lg border-gray-300 shadow-sm"></select>
-                            </div>
-                            <div class="relative h-80">
-                                <canvas id="supervisorChart"></canvas>
+                        <div class="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border-t-4 border-blue-500">
+                            <div class="p-6">
+                                <h2 class="text-lg font-bold mb-4 text-gray-800">📊 Análisis del Equipo</h2>
+                                <div class="flex items-center space-x-4 mb-4">
+                                    <select id="supervisorMonthSelector" class="rounded-lg border-gray-300 shadow-sm"></select>
+                                    <select id="supervisorYearSelector" class="rounded-lg border-gray-300 shadow-sm"></select>
+                                </div>
+                                <div class="relative h-80">
+                                    <canvas id="supervisorChart"></canvas>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -378,7 +429,7 @@
         <!-- Vista ASESOR -->
         <div id="asesorScreen" class="hidden h-screen flex flex-col">
             <!-- Header -->
-            <header class="bg-white shadow-md p-4 flex justify-between items-center z-10 flex-shrink-0">
+            <header class="bg-white shadow-sm p-4 flex justify-between items-center z-10 flex-shrink-0 border-b">
                 <div class="flex items-center space-x-3">
                     <img src="https://i.postimg.cc/KzxV7m0Z/CNCI-VIRTUAL-LOGO.jpg" alt="Logo CNCI" class="h-10 w-auto">
                     <h1 class="text-xl font-bold text-gray-800">👨‍🎓 Dashboard de Desempeño</h1>
@@ -393,30 +444,23 @@
                 </div>
             </header>
              <!-- Contenido -->
-            <main id="asesorMainContent" class="flex-grow p-6 overflow-y-auto bg-gray-50">
+            <main id="asesorMainContent" class="flex-grow p-6 overflow-y-auto bg-slate-50">
                 <!-- Tabs -->
-                <div class="mb-6 border-b border-gray-200">
-                    <nav class="flex space-x-8" aria-label="Tabs">
-                        <button onclick="switchAsesorTab('resumen')" class="asesor-tab whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm border-blue-500 text-blue-600">Resumen General</button>
-                        <button onclick="switchAsesorTab('tendencias')" class="asesor-tab whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Tendencias</button>
-                        <button onclick="switchAsesorTab('insignias')" class="asesor-tab whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Insignias</button>
-                        <button onclick="switchAsesorTab('plan')" class="asesor-tab whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Plan de Trabajo</button>
+                <div class="mb-6">
+                    <nav class="flex space-x-2 sm:space-x-4 bg-slate-200 rounded-lg p-1" aria-label="Tabs">
+                        <button onclick="switchAsesorTab('resumen')" class="asesor-tab flex-1 whitespace-nowrap py-2 px-1 text-center font-medium text-sm rounded-md">Resumen</button>
+                        <button onclick="switchAsesorTab('tendencias')" class="asesor-tab flex-1 whitespace-nowrap py-2 px-1 text-center font-medium text-sm rounded-md">Tendencias</button>
+                        <button onclick="switchAsesorTab('insignias')" class="asesor-tab flex-1 whitespace-nowrap py-2 px-1 text-center font-medium text-sm rounded-md">Insignias</button>
+                        <button onclick="switchAsesorTab('plan')" class="asesor-tab flex-1 whitespace-nowrap py-2 px-1 text-center font-medium text-sm rounded-md">Plan de Trabajo</button>
                     </nav>
                 </div>
                 
                 <!-- Contenedor de Pestañas -->
-                <div id="asesorTabContent">
+                <div id="asesorTabContent" class="fade-in-up">
                     <!-- Pestaña Resumen -->
                     <div id="resumen-tab"></div>
                     <!-- Pestaña Tendencias -->
-                    <div id="tendencias-tab" class="hidden">
-                        <div class="bg-white rounded-lg shadow-lg p-6">
-                             <h3 class="font-bold text-xl mb-4">Mi Progreso Anual</h3>
-                             <div class="relative h-80">
-                                <canvas id="asesorChart"></canvas>
-                             </div>
-                        </div>
-                    </div>
+                    <div id="tendencias-tab" class="hidden"></div>
                     <!-- Pestaña Insignias -->
                     <div id="insignias-tab" class="hidden"></div>
                     <!-- Pestaña Plan de Trabajo -->
@@ -709,10 +753,6 @@
                 await getDoc(doc(db, "system", "health_check"));
                 loadingStatus.textContent = 'Conexión exitosa. Inicializando datos...';
                 await initializeDataIfNeeded();
-                // =========================================================
-                // INICIO DEL CÓDIGO AGREGADO PARA LA CORRECCIÓN
-                // =========================================================
-                // Cargar y aplicar los títulos personalizados del login
                 const configDoc = await getDoc(doc(db, "system", "config"));
                 if (configDoc.exists()) {
                     const configData = configDoc.data();
@@ -723,9 +763,6 @@
                         document.getElementById('loginSubtitle').textContent = configData.loginSubtitle;
                     }
                 }
-                // =========================================================
-                // FIN DEL CÓDIGO AGREGADO
-                // =========================================================
                 await loadAvailablePeriods();
                 await loadBadgesCache(); 
                 loadingStatus.textContent = '¡Listo para iniciar!';
@@ -837,13 +874,11 @@
             const tbody = document.getElementById('usersTableBody');
             tbody.innerHTML = '';
 
-            // 1. Filtrar
             let filteredUsers = Object.values(usersCache).filter(user => 
                 user.nombre.toLowerCase().includes(userTableState.searchTerm) ||
                 user.id.toLowerCase().includes(userTableState.searchTerm)
             );
 
-            // 2. Ordenar
             filteredUsers.sort((a, b) => {
                 let valA = a[userTableState.sortKey] || '';
                 let valB = b[userTableState.sortKey] || '';
@@ -863,7 +898,6 @@
                 return 0;
             });
             
-            // 3. Paginar
             const totalPages = Math.ceil(filteredUsers.length / userTableState.rowsPerPage);
             if (userTableState.currentPage > totalPages && totalPages > 0) {
                 userTableState.currentPage = totalPages;
@@ -874,7 +908,6 @@
             const startIndex = (userTableState.currentPage - 1) * userTableState.rowsPerPage;
             const paginatedUsers = filteredUsers.slice(startIndex, startIndex + userTableState.rowsPerPage);
 
-            // 4. Renderizar
             if (paginatedUsers.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="5" class="text-center text-gray-500 py-4">No se encontraron usuarios.</td></tr>`;
             } else {
@@ -1056,6 +1089,7 @@
             }
             misAsesores.forEach(asesor => {
                 const tr = document.createElement('tr');
+                tr.className = 'transition-colors';
                 tr.innerHTML = `
                     <td class="px-4 py-2">${asesor.nombre}</td>
                     <td class="px-4 py-2">
@@ -1110,11 +1144,11 @@
             container.innerHTML = '';
 
             if (template.length === 0) {
-                container.innerHTML = `<p class="text-gray-500">Aún no has creado categorías para tu plantilla de evaluación.</p>`;
+                container.innerHTML = `<p class="text-gray-500 text-center py-4">Aún no has creado categorías para tu plantilla de evaluación.</p>`;
             } else {
                 template.forEach((cat, index) => {
                     const div = document.createElement('div');
-                    div.className = 'p-4 border rounded-lg';
+                    div.className = 'p-4 border rounded-lg bg-slate-50';
                     div.innerHTML = `
                         <div class="flex justify-between items-center">
                             <h4 class="font-bold">${cat.nombre} <span class="text-sm font-normal text-gray-500">(${cat.ponderacion || 0}%)</span></h4>
@@ -1411,28 +1445,50 @@
             monthSelect.addEventListener('change', renderAsesorDashboard);
             yearSelect.addEventListener('change', renderAsesorDashboard);
             
+            switchAsesorTab('resumen');
             renderAsesorDashboard();
         }
 
         function switchAsesorTab(tabName) {
             document.querySelectorAll('#asesorTabContent > div').forEach(div => div.classList.add('hidden'));
             document.querySelectorAll('.asesor-tab').forEach(btn => {
-                btn.classList.remove('border-blue-500', 'text-blue-600');
-                btn.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+                btn.classList.remove('bg-white', 'text-blue-600', 'shadow-sm');
+                btn.classList.add('text-gray-600', 'hover:bg-slate-300');
             });
+            
             const activeTab = document.getElementById(`${tabName}-tab`);
             activeTab.classList.remove('hidden');
             const button = document.querySelector(`.asesor-tab[onclick="switchAsesorTab('${tabName}')"]`);
-            button.classList.add('border-blue-500', 'text-blue-600');
-            button.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+            button.classList.add('bg-white', 'text-blue-600', 'shadow-sm');
+            button.classList.remove('text-gray-600', 'hover:bg-slate-300');
 
-            if (tabName === 'tendencias') {
-                renderAsesorCharts();
-            }
-            if (tabName === 'insignias') {
-                renderAsesorBadges();
-            }
+            // Cargar contenido dinámico al cambiar de pestaña
+            if (tabName === 'resumen') renderAsesorDashboard();
+            if (tabName === 'tendencias') renderAsesorCharts();
+            if (tabName === 'insignias') renderAsesorBadges();
+            if (tabName === 'plan') renderAsesorPlan();
         };
+
+        async function renderAsesorPlan() {
+            const month = document.getElementById('monthSelector').value;
+            const year = document.getElementById('yearSelector').value;
+            const evalId = `${currentUser.id}_${year}_${month}`;
+            const container = document.getElementById('plan-tab');
+
+            const evalDoc = await getDoc(doc(db, "evaluations", evalId));
+             if (!evalDoc.exists()) {
+                container.innerHTML = `<div class="text-center p-10 bg-white rounded-lg shadow-lg"><h3 class="text-xl font-bold">Sin Plan de Trabajo</h3><p class="text-gray-600 mt-2">No hay un plan de trabajo disponible para ${month} de ${year}.</p></div>`;
+                return;
+             }
+             const data = evalDoc.data();
+             container.innerHTML = `
+                 <div class="bg-white rounded-xl shadow-md p-6 text-center border-t-4 border-orange-500">
+                     <h3 class="font-bold text-2xl mb-4">🚀 Mi Plan de Trabajo</h3>
+                     <p class="text-gray-600 mb-6 max-w-xl mx-auto">${data.textoPlanTrabajo || 'Tu supervisor ha preparado un plan de trabajo para ti. Haz clic en el botón para verlo.'}</p>
+                     <a href="${data.enlacePlanTrabajo || '#'}" target="_blank" class="btn-secondary inline-block text-white font-semibold py-3 px-8 rounded-lg">Acceder a mi Plan de Trabajo</a>
+                 </div>`;
+        }
+
 
         async function renderAsesorDashboard() {
             const month = document.getElementById('monthSelector').value;
@@ -1447,8 +1503,6 @@
             
                 if (!evalDoc.exists()) {
                     resumenContainer.innerHTML = `<div class="text-center p-10 bg-white rounded-lg shadow-lg"><h3 class="text-xl font-bold">Sin Evaluación</h3><p class="text-gray-600 mt-2">Aún no se ha cargado tu evaluación para ${month} de ${year}.</p></div>`;
-                    document.getElementById('plan-tab').innerHTML = '';
-                    document.getElementById('insignias-tab').innerHTML = '';
                     return;
                 }
 
@@ -1465,25 +1519,29 @@
                         const ponderacion = categoryTemplate ? categoryTemplate.ponderacion : 0;
                         const score = parseFloat(catData.puntaje || 0);
                         const scoreClass = score >= 9 ? 'score-high' : score >= 7 ? 'score-medium' : 'score-low';
+                        const borderClass = score >= 9 ? 'border-green-500' : score >= 7 ? 'border-amber-500' : 'border-red-500';
 
                         let criteriaHTMLList = '<p class="text-xs text-gray-500">No se evaluaron criterios específicos.</p>';
                         if (catData.criterios && Object.keys(catData.criterios).length > 0) {
                             criteriaHTMLList = Object.entries(catData.criterios).map(([critName, critScore]) => `
-                                <li class="flex justify-between items-center py-1 border-b border-gray-100">
+                                <li class="flex justify-between items-center py-1.5 border-b border-gray-100 last:border-b-0">
                                     <span class="text-gray-600">${critName}</span>
                                     <span class="font-bold text-gray-800">${critScore}/10</span>
                                 </li>
                             `).join('');
-                            criteriaHTMLList = `<ul class="space-y-1 mt-2">${criteriaHTMLList}</ul>`;
+                            criteriaHTMLList = `<ul class="space-y-1 mt-2 bg-slate-50 p-3 rounded-md">${criteriaHTMLList}</ul>`;
                         }
 
                         categoriesHTML += `
-                            <div class="bg-white rounded-lg shadow p-4">
+                            <div class="bg-white rounded-xl shadow-md p-5 border-l-4 ${borderClass} transition-all duration-300 hover:shadow-lg">
                                 <div class="flex justify-between items-start mb-2">
-                                    <h4 class="font-bold text-lg">${catName} <span class="text-sm font-normal text-gray-500">(Ponderación: ${ponderacion}%)</span></h4>
+                                    <div>
+                                        <h4 class="font-bold text-lg">${catName}</h4>
+                                        <span class="text-xs font-normal text-gray-400">Ponderación: ${ponderacion}%</span>
+                                    </div>
                                     <div class="score-circle ${scoreClass}">${score.toFixed(1)}</div>
                                 </div>
-                                <div class="text-sm space-y-2">
+                                <div class="text-sm space-y-3 mt-4">
                                     <p><strong>Comentarios de Calidad:</strong> ${catData.comentarioCalidad || 'N/A'}</p>
                                     <p><strong>Comentarios de Supervisión:</strong> ${catData.comentarioSupervision || 'N/A'}</p>
                                 </div>
@@ -1492,7 +1550,7 @@
                                         <span>Ver Criterios</span>
                                         <svg class="w-4 h-4 ml-1 criteria-toggle" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div class="hidden mt-2 text-sm">
+                                    <div class="criteria-content text-sm">
                                         ${criteriaHTMLList}
                                     </div>
                                 </div>
@@ -1501,38 +1559,36 @@
                     }
                 }
 
-                const calificacionGeneral = data.calificacionGeneral || 0;
-                const metaLlamadas = data.metaLlamadas || 0;
+                const calificacionGeneral = parseFloat(data.calificacionGeneral || 0);
+                const metaLlamadas = parseInt(data.metaLlamadas || 0);
 
                 resumenContainer.innerHTML = `
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <div class="bg-white rounded-lg shadow p-4">
-                            <h3 class="font-bold mb-2">Calificación General</h3>
-                            <div class="progress-bar-container"><div class="progress-bar h-4" style="width: ${calificacionGeneral * 10}%"></div></div>
-                            <p class="text-right font-bold mt-1">${calificacionGeneral} / 10</p>
+                        <div class="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 p-6 flex flex-col items-center justify-center text-center border-t-4 border-blue-500">
+                             <h3 class="font-bold text-gray-600 text-sm uppercase tracking-wider">⭐ Calificación General</h3>
+                             <p class="text-5xl font-bold text-blue-600 my-2">${calificacionGeneral.toFixed(1)}<span class="text-2xl text-gray-400">/10</span></p>
+                             <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                 <div class="progress-bar h-2.5 rounded-full" style="width: ${calificacionGeneral * 10}%"></div>
+                             </div>
                         </div>
-                        <div class="bg-white rounded-lg shadow p-4">
-                            <h3 class="font-bold mb-2">Meta de Llamadas</h3>
-                            <div class="progress-bar-container"><div class="progress-bar h-4" style="width: ${metaLlamadas}%"></div></div>
-                            <p class="text-right font-bold mt-1">${metaLlamadas}%</p>
+                        <div class="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 p-6 flex flex-col items-center justify-center text-center border-t-4 border-orange-500">
+                             <h3 class="font-bold text-gray-600 text-sm uppercase tracking-wider">🎯 Meta de Llamadas</h3>
+                             <p class="text-5xl font-bold text-orange-500 my-2">${metaLlamadas}<span class="text-2xl text-gray-400">%</span></p>
+                             <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                 <div class="progress-bar-orange h-2.5 rounded-full" style="width: ${metaLlamadas}%"></div>
+                             </div>
                         </div>
                     </div>
                     <div class="space-y-4 mb-6">${categoriesHTML}</div>
-                    <div class="bg-white rounded-lg shadow p-4">
-                         <h3 class="font-bold mb-2">Comentarios Generales del Supervisor</h3>
+                    <div class="bg-white rounded-xl shadow-md p-6 border-t-4 border-slate-400">
+                         <h3 class="font-bold text-lg mb-2">Comentarios Generales del Supervisor</h3>
                          <p class="text-sm text-gray-700">${data.comentariosGenerales || 'Sin comentarios generales.'}</p>
                     </div>
                     <div class="mt-6 text-center">
-                        <a href="${data.enlaceDetalles || '#'}" target="_blank" class="btn-primary inline-block text-white font-semibold py-2 px-6 rounded-lg">Detalles de Evaluación</a>
+                        <a href="${data.enlaceDetalles || '#'}" target="_blank" class="btn-primary inline-block text-white font-semibold py-3 px-8 rounded-lg">Ver Detalles de Evaluación</a>
                     </div>
                 `;
                 
-                document.getElementById('plan-tab').innerHTML = `
-                     <div class="bg-white rounded-lg shadow p-6 text-center">
-                         <h3 class="font-bold text-xl mb-4">Plan de Trabajo</h3>
-                         <p class="text-gray-600 mb-6">${data.textoPlanTrabajo || 'Tu supervisor ha preparado un plan de trabajo para ti. Haz clic en el botón para verlo.'}</p>
-                         <a href="${data.enlacePlanTrabajo || '#'}" target="_blank" class="btn-secondary inline-block text-white font-semibold py-2 px-6 rounded-lg">Acceder a mi Plan de Trabajo</a>
-                     </div>`;
             } catch (error) {
                  console.error("Error renderizando dashboard de asesor:", error);
                  resumenContainer.innerHTML = `<div class="text-center p-10 bg-red-100 text-red-700 rounded-lg shadow-lg"><h3 class="text-xl font-bold">Error al Cargar</h3><p class="mt-2">Hubo un problema al cargar tu evaluación. Por favor, intenta de nuevo más tarde.</p></div>`;
@@ -1599,11 +1655,10 @@
             const criteriaContent = button.nextElementSibling;
             const icon = button.querySelector('svg');
             const buttonText = button.querySelector('span');
-
-            const isHidden = criteriaContent.classList.toggle('hidden');
-            icon.classList.toggle('rotated', !isHidden);
             
-            buttonText.textContent = isHidden ? 'Ver Criterios' : 'Ocultar Criterios';
+            const isOpen = criteriaContent.classList.toggle('open');
+            icon.classList.toggle('rotated', isOpen);
+            buttonText.textContent = isOpen ? 'Ocultar Criterios' : 'Ver Criterios';
         }
 
         async function initializeDataIfNeeded() {
@@ -1664,15 +1719,12 @@
                 return;
             }
             const template = templateDoc.data().categorias || [];
-            // CÓDIGO MODIFICADO Y CORREGIDO
             let headers = ["evalId", "asesorId", "asesorNombre", "mes", "año", "calificacionGeneral", "metaLlamadas", "comentariosGenerales", "enlaceDetalles", "enlacePlanTrabajo", "textoPlanTrabajo"];
             template.forEach(cat => {
                 cat.criterios.forEach(crit => {
-                    // MODIFICACIÓN: Se envuelve la cabecera en comillas para soportar comas.
-                    const cleanCrit = crit.replace(/"/g, '""'); // Escapa comillas internas.
+                    const cleanCrit = crit.replace(/"/g, '""'); 
                     headers.push(`"${cat.nombre}_${cleanCrit}_Puntaje"`);
                 });
-                // También se entrecomillan estas cabeceras por consistencia.
                 headers.push(`"${cat.nombre}_ComentarioCalidad"`, `"${cat.nombre}_ComentarioSupervision"`);
             });
             
@@ -1772,15 +1824,12 @@ async function importUsersFromCSV(csvData) {
     let operationsCount = 0;
 
     try {
-    // 1. Se crea una versión de las cabeceras sin comillas.
     const cleanHeaders = headers.map(h => h.replace(/"/g, ''));
 
     for (let i = 1; i < lines.length; i++) {
         const values = parseCSVLine(lines[i]);
         
-        // 2. Se usa 'cleanHeaders' para crear el objeto.
         const record = cleanHeaders.reduce((obj, header, index) => {
-            // 3. La asignación es más simple, sin .replace().
             obj[header] = values[index] || ''; 
             return obj;
         }, {});
@@ -1868,11 +1917,6 @@ async function importUsersFromCSV(csvData) {
                         catData.comentarioSupervision = record[`${catName}_ComentarioSupervision`] || '';
                         evalData.categoriasEvaluadas[catName] = catData;
                     });
-                // =========================================================
-                // INICIO DEL CÓDIGO CORREGIDO
-                // =========================================================
-
-                // 1. Inicia el cálculo de la calificación ponderada
                 let finalWeightedScore = 0;
 
                 template.forEach(cat => {
@@ -1886,14 +1930,9 @@ async function importUsersFromCSV(csvData) {
                     }
                 });
 
-                // 2. Convierte el puntaje a una escala del 0-10 y lo asigna
-                // Si el CSV ya traía una calificación, se usará esa. Si no, se usa la calculada.
                 if (!evalData.calificacionGeneral) {
                     evalData.calificacionGeneral = (finalWeightedScore / 10).toFixed(1);
                 }
-                // =========================================================
-                // FIN DEL CÓDIGO CORREGIDO
-                // =========================================================
                     batch.set(evalRef, evalData, { merge: !overwrite });
                     operationsCount++;
                 }
@@ -2039,7 +2078,8 @@ async function importUsersFromCSV(csvData) {
                         data: data,
                         backgroundColor: 'rgba(255, 133, 0, 0.6)',
                         borderColor: 'rgba(255, 133, 0, 1)',
-                        borderWidth: 1
+                        borderWidth: 1,
+                        borderRadius: 5
                     }]
                 },
                 options: {
@@ -2103,7 +2143,8 @@ async function importUsersFromCSV(csvData) {
                         data: data,
                         backgroundColor: 'rgba(42, 106, 255, 0.6)',
                         borderColor: 'rgba(42, 106, 255, 1)',
-                        borderWidth: 1
+                        borderWidth: 1,
+                        borderRadius: 5
                     }]
                 },
                 options: {
@@ -2116,6 +2157,7 @@ async function importUsersFromCSV(csvData) {
         }
         
         async function renderAsesorCharts() {
+            const container = document.getElementById('tendencias-tab');
             const year = document.getElementById('yearSelector').value;
             const q = query(collection(db, "evaluations"), where("asesorId", "==", currentUser.id), where("year", "==", year));
             const querySnapshot = await getDocs(q);
@@ -2127,8 +2169,17 @@ async function importUsersFromCSV(csvData) {
             });
 
             const labels = availablePeriods.months;
-            const data = labels.map(month => monthlyScores[month] || null); // null para meses sin datos
+            const data = labels.map(month => monthlyScores[month] || null);
 
+            container.innerHTML = `
+                <div class="bg-white rounded-xl shadow-md p-6 border-t-4 border-blue-500">
+                     <h3 class="font-bold text-xl mb-4">📈 Mi Progreso Anual</h3>
+                     <div class="relative h-80">
+                        <canvas id="asesorChart"></canvas>
+                     </div>
+                </div>
+            `;
+            
             const ctx = document.getElementById('asesorChart').getContext('2d');
             if (asesorChart) {
                 asesorChart.destroy();
@@ -2144,7 +2195,7 @@ async function importUsersFromCSV(csvData) {
                         backgroundColor: 'rgba(42, 106, 255, 0.1)',
                         fill: true,
                         tension: 0.3,
-                        spanGaps: true // Conecta la línea aunque falten meses
+                        spanGaps: true
                     }]
                 },
                 options: {
@@ -2197,6 +2248,7 @@ async function importUsersFromCSV(csvData) {
             } else {
                 supervisorBadges.forEach(badge => {
                     const tr = document.createElement('tr');
+                    tr.className = 'transition-colors';
                     tr.innerHTML = `
                         <td class="px-4 py-2 text-2xl">${badge.icono}</td>
                         <td class="px-4 py-2 font-medium">${badge.nombre}</td>
@@ -2359,7 +2411,7 @@ async function importUsersFromCSV(csvData) {
             const earnedBadges = Array.from(earnedBadgeIds).map(id => badgesCache[id]).filter(Boolean);
             const availableBadges = Object.values(badgesCache).filter(b => b.tipo === 'global' || b.creadorId === currentUser.supervisorAsignado);
 
-            let html = '<div class="bg-white p-6 rounded-lg shadow-lg">';
+            let html = '<div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-orange-500">';
             html += '<h3 class="font-bold text-xl mb-4">🏆 Mis Insignias Ganadas</h3>';
             if (earnedBadges.length > 0) {
                 html += '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">';
@@ -2381,14 +2433,13 @@ async function importUsersFromCSV(csvData) {
                  html += '<p class="text-gray-500">Aún no has ganado ninguna insignia. ¡Sigue esforzándote!</p>';
             }
 
-            // Historial de Reconocimientos
             html += '<h3 class="font-bold text-xl mt-8 mb-4">📜 Historial de Reconocimientos</h3>';
             if (badgeHistory.length > 0) {
-                badgeHistory.sort((a, b) => b.date - a.date); // Sort by date descending
+                badgeHistory.sort((a, b) => b.date - a.date);
                 html += `
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
+                            <thead class="bg-slate-50">
                                 <tr>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Período</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Insignia</th>
