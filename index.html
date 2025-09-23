@@ -1858,27 +1858,23 @@ async function importUsersFromCSV(csvData) {
 }
 
         async function importSupervisorEvaluationsFromCSV(csvData) {
-            const overwrite = document.getElementById('overwriteDataCheckbox').checked;
-            const templateDoc = await getDoc(doc(db, "evaluation_templates", currentUser.id));
-             if (!templateDoc.exists()) {
-                alert("No se puede importar porque no tienes una plantilla de evaluación definida.");
-                return;
-            }
-            const template = templateDoc.data().categorias || [];
+            // ... (código anterior)
             const lines = csvData.split('\n').filter(line => line.trim());
              if (lines.length < 2) { /* ... */ }
 
-            const headers = parseCSVLine(lines[0]); // <-- USA la función robusta
+            const headers = parseCSVLine(lines[0]);
+            // ✅ LÍNEA AÑADIDA: Elimina las comillas de cada encabezado.
+            const cleanHeaders = headers.map(h => h.replace(/"/g, ''));
             const batch = writeBatch(db);
             let operationsCount = 0;
 
             try {
                 for (let i = 1; i < lines.length; i++) {
-                    const values = parseCSVLine(lines[i]); // <-- USA la función robusta aquí también
+                    const values = parseCSVLine(lines[i]);
                     if (values.length === 0) continue;
 
-                    const record = headers.reduce((obj, header, index) => {
-                // Limpia las comillas de los encabezados al crear el objeto
+                    // ✅ LÍNEA MODIFICADA: Usa "cleanHeaders" en lugar de "headers".
+                    const record = cleanHeaders.reduce((obj, header, index) => {
                        obj[header] = values[index] || '';
                        return obj;
                     }, {});
