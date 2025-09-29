@@ -689,6 +689,8 @@
     <script type="module" defer>
         // Importar funciones de Firebase 9+ (versión modular)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        // 🚨 LÍNEA 1: IMPORTAR AUTH 🚨 
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js"; 
         import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, query, where, writeBatch, serverTimestamp, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
         // Configuración de Firebase (proporcionada por el usuario)
@@ -702,9 +704,20 @@
             measurementId: "G-QFHR58RGH8"
         };
 
-        // Inicializar Firebase
+        // Inicialización de Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+
+        // 🚨 ESTAS TRES LÍNEAS DEBEN ESTAR AQUÍ, AFUERA DE CUALQUIER FUNCIÓN 🚨
+        const auth = getAuth(app); 
+
+        signInAnonymously(auth)
+            .then(() => {
+                console.log("Sesión anónima iniciada. Reglas de seguridad habilitadas.");
+            })
+            .catch((error) => {
+                console.error("Error al iniciar sesión anónima:", error);
+        });
 
         // Variables de estado globales
         let currentUser = null;
