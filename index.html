@@ -2032,12 +2032,12 @@ async function importUsersFromCSV(csvData) {
 
                 if (scoreCount > 0) {
                     const categoryAverage = totalScore / scoreCount;
-                    const weightedContribution = (categoryAverage / 10) * ponderacion;
+                    const weightedContribution = (categoryAverage / 100) * ponderacion;
                     finalWeightedScore += weightedContribution;
                 }
             });
 
-            const finalScoreOutOf10 = (finalWeightedScore / 10).toFixed(1);
+            const finalScoreOutOf10 = finalWeightedScore.toFixed(1);
             const scoreInput = document.getElementById('evalGeneralScore');
             if (scoreInput) {
                 scoreInput.value = finalScoreOutOf10;
