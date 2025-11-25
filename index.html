@@ -1095,11 +1095,20 @@
         function renderAsesoresTable() {
             const tbody = document.getElementById('asesoresTableBody');
             tbody.innerHTML = '';
+            
+            // 1. Obtener y filtrar asesores del supervisor actual
             const misAsesores = Object.values(usersCache).filter(u => u.supervisorAsignado === currentUser.id);
+
+            // 2. Insertar el ordenamiento alfabético aquí
+            misAsesores.sort((a, b) => a.nombre.localeCompare(b.nombre)); 
+            // ----------------------------------------------------
+
             if (misAsesores.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="2" class="text-center text-gray-500 py-4">No tienes asesores asignados.</td></tr>`;
                 return;
             }
+            
+            // 3. Renderizar la tabla (ahora ya ordenada)
             misAsesores.forEach(asesor => {
                 const tr = document.createElement('tr');
                 tr.className = 'transition-colors';
@@ -2058,7 +2067,7 @@ async function importUsersFromCSV(csvData) {
             yearSelect.innerHTML = availablePeriods.years.map(y => `<option value="${y}">${y}</option>`).join('');
             monthSelect.addEventListener('change', loadSupervisorCharts);
             yearSelect.addEventListener('change', loadSupervisorCharts);
-        }
+        }     
         
         async function loadSupervisorCharts() {
             const month = document.getElementById('supervisorMonthSelector').value;
@@ -2066,8 +2075,8 @@ async function importUsersFromCSV(csvData) {
             const q = query(collection(db, "evaluations"), where("supervisorId", "==", currentUser.id), where("year", "==", year), where("month", "==", month));
             const querySnapshot = await getDocs(q);
             
-            const labels = [];
-            const data = [];
+            // 1. Creamos un array temporal para almacenar los objetos completos
+            const rawData = [];
 
             const supervisorAsesorIds = Object.values(usersCache)
                 .filter(u => u.supervisorAsignado === currentUser.id)
@@ -2077,10 +2086,20 @@ async function importUsersFromCSV(csvData) {
                 const evalData = doc.data();
                 if (supervisorAsesorIds.includes(evalData.asesorId)) {
                     const asesorNombre = usersCache[evalData.asesorId]?.nombre || evalData.asesorId;
-                    labels.push(asesorNombre);
-                    data.push(parseFloat(evalData.calificacionGeneral) || 0);
+                    // Guardamos nombre y puntaje juntos
+                    rawData.push({
+                        nombre: asesorNombre,
+                        puntaje: parseFloat(evalData.calificacionGeneral) || 0
+                    });
                 }
             });
+
+            // 2. ORDENAMOS ALFABÉTICAMENTE POR NOMBRE (La mejora solicitada)
+            rawData.sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+            // 3. Separamos en los arrays que necesita Chart.js
+            const labels = rawData.map(item => item.nombre);
+            const data = rawData.map(item => item.puntaje);
             
             const ctx = document.getElementById('supervisorChart').getContext('2d');
             if (supervisorChart) {
