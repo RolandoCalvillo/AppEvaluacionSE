@@ -128,6 +128,27 @@
         #usersTableBody tr:hover {
              background-color: #f7fafc; /* bg-gray-50 */
         }
+        /* ================= ESTILOS DRAG AND DROP ================= */
+        /* El elemento que se arrastra */
+        .draggable-criterion {
+            cursor: move; /* Cambia el cursor a la manita de mover */
+            transition: all 0.2s ease;
+        }
+        
+        /* Efecto visual mientras lo arrastras (se pone semitransparente) */
+        .draggable-criterion.dragging {
+            opacity: 0.5;
+            background-color: #eff6ff; /* Azul muy claro */
+            border: 1px dashed #6366f1; /* Borde punteado índigo */
+        }
+        
+        /* La zona de destino (el grupo) cuando le pasas un elemento por encima */
+        .criteria-list.drag-over {
+            background-color: #f0fdf4; /* Verde muy claro */
+            border: 2px dashed #22c55e; /* Borde verde */
+            min-height: 50px; /* Asegura espacio para soltar aunque esté vacío */
+            border-radius: 0.5rem;
+        }
     </style>
 </head>
 <body class="bg-gray-100 font-sans">
@@ -537,31 +558,41 @@
     </div>
 
     <!-- Modal para Añadir/Editar Categoría (Supervisor) -->
-    <div id="categoryModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg p-6">
-            <h3 id="categoryModalTitle" class="text-xl font-bold mb-4">Añadir Categoría</h3>
-            <form id="categoryForm" class="space-y-4">
-                <input type="hidden" id="categoryId">
-                <div class="grid grid-cols-3 gap-4">
-                    <div class="col-span-2">
-                        <label class="block text-sm font-medium">Nombre de la Categoría</label>
-                        <input type="text" id="categoryName" class="mt-1 w-full border border-gray-300 rounded-lg p-2" required>
+    <div id="categoryModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 modal-container">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col"> <div class="p-6 border-b">
+                <h3 id="categoryModalTitle" class="text-xl font-bold">Gestión de Categoría</h3>
+            </div>
+            
+            <div class="p-6 overflow-y-auto flex-grow">
+                <form id="categoryForm" class="space-y-6">
+                    <input type="hidden" id="categoryId">
+                    
+                    <div class="grid grid-cols-3 gap-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                        <div class="col-span-2">
+                            <label class="block text-sm font-bold text-blue-800">Nombre de la Categoría</label>
+                            <input type="text" id="categoryName" placeholder="Ej. Calidad" class="mt-1 w-full border border-blue-200 rounded-lg p-2 focus:ring-2 focus:ring-blue-500" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-blue-800">Ponderación (%)</label>
+                            <input type="number" id="categoryPonderacion" min="0" max="100" placeholder="0-100" class="mt-1 w-full border border-blue-200 rounded-lg p-2 text-center font-bold text-blue-800" required>
+                        </div>
                     </div>
+
                     <div>
-                        <label class="block text-sm font-medium">Ponderación (%)</label>
-                        <input type="number" id="categoryPonderacion" min="0" max="100" class="mt-1 w-full border border-gray-300 rounded-lg p-2" required>
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="text-md font-bold text-gray-700">Grupos de Criterios</h4>
+                            <button type="button" onclick="addGroupBlock()" class="text-sm bg-green-100 text-green-700 py-1 px-3 rounded hover:bg-green-200 font-semibold">+ Añadir Grupo</button>
+                        </div>
+                        <div id="groupsContainer" class="space-y-4">
+                            </div>
                     </div>
-                </div>
-                <div>
-                    <h4 class="text-sm font-medium mb-2">Criterios de Evaluación</h4>
-                    <div id="criteriaInputs" class="space-y-2"></div>
-                    <button type="button" onclick="addCriterionInput()" class="mt-2 text-sm text-blue-600 hover:underline">+ Añadir criterio</button>
-                </div>
-                 <div class="flex justify-end space-x-3 pt-4">
-                    <button type="button" onclick="closeCategoryModal()" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg">Cancelar</button>
-                    <button type="submit" class="btn-primary text-white font-semibold py-2 px-4 rounded-lg">Guardar</button>
-                </div>
-            </form>
+                </form>
+            </div>
+
+            <div class="p-6 border-t flex justify-end space-x-3 bg-gray-50 rounded-b-lg">
+                <button type="button" onclick="closeCategoryModal()" class="bg-white border border-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-50">Cancelar</button>
+                <button type="button" onclick="submitCategoryForm()" class="btn-primary text-white font-semibold py-2 px-6 rounded-lg shadow-md">Guardar Categoría</button>
+            </div>
         </div>
     </div>
 
@@ -1161,51 +1192,211 @@
         async function renderCategoryManagement() {
             const container = document.getElementById('categoriesContainer');
             container.innerHTML = '<div class="skeleton h-24 w-full"></div>';
+            
             const templateDoc = await getDoc(doc(db, "evaluation_templates", currentUser.id));
-            const template = templateDoc.exists() ? templateDoc.data().categorias || [] : [];
+            // APLICAMOS LA NORMALIZACIÓN AQUÍ
+            let rawCategories = templateDoc.exists() ? templateDoc.data().categorias || [] : [];
+            const template = normalizeCategories(rawCategories);
+            
             container.innerHTML = '';
 
             if (template.length === 0) {
                 container.innerHTML = `<p class="text-gray-500 text-center py-4">Aún no has creado categorías para tu plantilla de evaluación.</p>`;
             } else {
                 template.forEach((cat, index) => {
+                    // Generar HTML para los grupos
+                    let groupsHtml = '';
+                    cat.grupos.forEach(grupo => {
+                        groupsHtml += `
+                            <div class="mt-2 pl-4 border-l-2 border-gray-200">
+                                <p class="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                                    Grupo: ${grupo.nombre} (${grupo.ponderacion}%)
+                                </p>
+                                <ul class="list-disc list-inside text-sm text-gray-600 ml-2">
+                                    ${(grupo.criterios || []).map(c => `<li>${c}</li>`).join('')}
+                                </ul>
+                            </div>
+                        `;
+                    });
+
                     const div = document.createElement('div');
-                    div.className = 'p-4 border rounded-lg bg-slate-50';
+                    div.className = 'p-4 border rounded-lg bg-slate-50 relative'; // Agregué relative
                     div.innerHTML = `
                         <div class="flex justify-between items-center">
-                            <h4 class="font-bold">${cat.nombre} <span class="text-sm font-normal text-gray-500">(${cat.ponderacion || 0}%)</span></h4>
+                            <h4 class="font-bold text-lg">${cat.nombre} <span class="text-sm font-normal text-gray-500">(${cat.ponderacion || 0}%)</span></h4>
                             <div>
-                                <button onclick="openCategoryModal(${index})" class="text-indigo-600 text-sm mr-2">Editar</button>
-                                <button onclick="deleteCategory(${index})" class="text-red-600 text-sm">Eliminar</button>
+                                <button onclick="openCategoryModal(${index})" class="text-indigo-600 text-sm mr-2 font-medium">Editar</button>
+                                <button onclick="deleteCategory(${index})" class="text-red-600 text-sm font-medium">Eliminar</button>
                             </div>
                         </div>
-                        <ul class="list-disc list-inside mt-2 text-sm text-gray-600">
-                            ${(cat.criterios || []).map(c => `<li>${c}</li>`).join('')}
-                        </ul>
+                        <div class="mt-2 space-y-2">
+                            ${groupsHtml}
+                        </div>
                     `;
                     container.appendChild(div);
                 });
             }
             updatePonderacionTotal();
         }
+        // ======================= LÓGICA DE DRAG AND DROP =======================
+        
+        let draggedElement = null;
 
+        // Función que conecta un elemento individual con los eventos de arrastre
+        function addDragEvents(element) {
+            element.addEventListener('dragstart', handleDragStart);
+            element.addEventListener('dragend', handleDragEnd);
+        }
+
+        function handleDragStart(e) {
+            draggedElement = this;
+            this.classList.add('dragging'); // Añade la clase visual
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', this.innerHTML);
+        }
+
+        function handleDragEnd(e) {
+            this.classList.remove('dragging'); // Quita la clase visual
+            draggedElement = null;
+            
+            // Limpiar clases visuales de "destino" de todas las listas
+            document.querySelectorAll('.criteria-list').forEach(list => {
+                list.classList.remove('drag-over');
+            });
+        }
+
+        // Configura las zonas donde se pueden SOLTAR los elementos (las listas)
+        function setupDropZones() {
+            // Usamos delegación de eventos en el documento para detectar las listas dinámicas
+            document.addEventListener('dragover', (e) => {
+                const list = e.target.closest('.criteria-list');
+                if (list) {
+                    e.preventDefault(); // Necesario para permitir soltar
+                    list.classList.add('drag-over');
+                }
+            });
+
+            document.addEventListener('dragleave', (e) => {
+                const list = e.target.closest('.criteria-list');
+                if (list) {
+                    list.classList.remove('drag-over');
+                }
+            });
+
+            document.addEventListener('drop', (e) => {
+                const list = e.target.closest('.criteria-list');
+                if (list && draggedElement) {
+                    e.preventDefault();
+                    list.classList.remove('drag-over');
+                    
+                    // Mover el elemento arrastrado al nuevo contenedor
+                    list.appendChild(draggedElement);
+                }
+            });
+        }
+        
+        // Ejecutamos esto una vez al inicio para activar las zonas de caída
+        setupDropZones();
+        // ======================= HELPERS PARA GESTIÓN DE GRUPOS (V2) =======================
+        // Genera el HTML de un bloque de grupo
+        function addGroupBlock(groupData = null) {
+            const container = document.getElementById('groupsContainer');
+            const groupId = Date.now() + Math.random().toString(36).substr(2, 9); 
+            
+            const nombre = groupData ? groupData.nombre : '';
+            const ponderacion = groupData ? groupData.ponderacion : '';
+            const criterios = groupData ? groupData.criterios : [];
+
+            const groupHtml = `
+                <div class="group-block border border-gray-300 rounded-lg p-4 bg-gray-50 relative transition-all hover:shadow-md" id="group-${groupId}">
+                    <button type="button" onclick="this.closest('.group-block').remove()" class="absolute top-2 right-2 text-red-400 hover:text-red-600 font-bold text-xl" title="Eliminar Grupo">&times;</button>
+                    
+                    <div class="grid grid-cols-3 gap-4 mb-3">
+                        <div class="col-span-2">
+                            <label class="block text-xs font-semibold text-gray-500 uppercase">Nombre del Grupo</label>
+                            <input type="text" class="group-name-input mt-1 w-full border-gray-300 rounded p-1.5 text-sm font-medium" placeholder="Ej. Etiqueta Telefónica" value="${nombre}" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 uppercase">Peso en Cat. (%)</label>
+                            <input type="number" class="group-weight-input mt-1 w-full border-gray-300 rounded p-1.5 text-sm text-center" placeholder="%" min="0" max="100" value="${ponderacion}" required>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-3 rounded border border-gray-200">
+                        <label class="block text-xs font-semibold text-gray-400 mb-2">CRITERIOS (0-10) - Arrastra para mover</label>
+                        
+                        <div class="criteria-list space-y-2 min-h-[50px] p-2 border border-dashed border-transparent transition-colors rounded">
+                            </div>
+                        
+                        <button type="button" onclick="addCriterionToGroup('${groupId}')" class="mt-2 text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center">
+                            + Añadir Criterio
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            container.insertAdjacentHTML('beforeend', groupHtml);
+
+            if (criterios && criterios.length > 0) {
+                criterios.forEach(crit => addCriterionToGroup(groupId, crit));
+            } else if (!groupData) {
+                addCriterionToGroup(groupId);
+            }
+        }
+
+        // Añade un input de criterio dentro de un grupo específico
+        function addCriterionToGroup(groupId, value = '') {
+            const groupBlock = document.getElementById(`group-${groupId}`);
+            const listContainer = groupBlock.querySelector('.criteria-list');
+            
+            const div = document.createElement('div');
+            
+            // CAMBIO 1: Añadimos la clase 'draggable-criterion' y estilos de hover
+            div.className = 'draggable-criterion flex items-center space-x-2 p-1 rounded hover:bg-gray-100';
+            
+            // CAMBIO 2: Hacemos el elemento arrastrable
+            div.setAttribute('draggable', 'true');
+            
+            // CAMBIO 3: Añadimos un icono visual (⋮⋮) para indicar que se puede mover
+            div.innerHTML = `
+                <div class="cursor-move text-gray-400 mr-1" title="Arrastrar para mover">⋮⋮</div>
+                <input type="text" class="criterion-input w-full border-b border-transparent hover:border-gray-300 focus:border-indigo-500 focus:outline-none py-1 text-sm text-gray-700 bg-transparent" placeholder="Escribe un criterio..." value="${value}" required>
+                <button type="button" onclick="this.parentElement.remove()" class="text-gray-400 hover:text-red-500 text-lg leading-none">&times;</button>
+            `;
+            
+            // CAMBIO 4: Conectamos este nuevo elemento a la lógica de arrastre del Paso 2
+            addDragEvents(div);
+
+            listContainer.appendChild(div);
+        }
         async function openCategoryModal(index = null) {
-            const form = document.getElementById('categoryForm');
-            form.reset();
-            document.getElementById('criteriaInputs').innerHTML = '';
-
+            // Limpiar formulario anterior
+            document.getElementById('categoryForm').reset();
+            document.getElementById('groupsContainer').innerHTML = '';
+            
             if (index !== null) {
+                // MODO EDICIÓN
                 const templateDoc = await getDoc(doc(db, "evaluation_templates", currentUser.id));
-                const category = templateDoc.data().categorias[index];
-                document.getElementById('categoryModalTitle').textContent = 'Editar Categoría';
+                let rawCategories = templateDoc.data().categorias || [];
+                // IMPORTANTE: Normalizamos aquí para asegurar que siempre trabajamos con grupos
+                const normalizedCategories = normalizeCategories(rawCategories);
+                const category = normalizedCategories[index];
+
+                document.getElementById('categoryModalTitle').textContent = 'Editar Categoría y Grupos';
                 document.getElementById('categoryId').value = index;
                 document.getElementById('categoryName').value = category.nombre;
                 document.getElementById('categoryPonderacion').value = category.ponderacion || 0;
-                (category.criterios || []).forEach(c => addCriterionInput(c));
+
+                // Renderizar los grupos existentes
+                if (category.grupos && category.grupos.length > 0) {
+                    category.grupos.forEach(grupo => addGroupBlock(grupo));
+                }
             } else {
-                document.getElementById('categoryModalTitle').textContent = 'Añadir Categoría';
+                // MODO CREACIÓN
+                document.getElementById('categoryModalTitle').textContent = 'Nueva Categoría';
                 document.getElementById('categoryId').value = '';
-                addCriterionInput();
+                // Añadir un grupo por defecto vacío
+                addGroupBlock();
             }
 
             document.getElementById('categoryModal').classList.remove('hidden');
@@ -1225,18 +1416,65 @@
             document.getElementById('criteriaInputs').appendChild(div);
         }
 
-        document.getElementById('categoryForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const index = document.getElementById('categoryId').value;
-            const newCategory = {
-                nombre: document.getElementById('categoryName').value,
-                ponderacion: parseInt(document.getElementById('categoryPonderacion').value) || 0,
-                criterios: [...document.querySelectorAll('#criteriaInputs input')].map(input => input.value).filter(val => val)
-            };
+        async function submitCategoryForm() {
+            // 1. Validaciones Básicas
+            const name = document.getElementById('categoryName').value.trim();
+            const ponderacion = document.getElementById('categoryPonderacion').value;
             
+            if (!name || !ponderacion) {
+                alert("Por favor completa el nombre y la ponderación de la categoría.");
+                return;
+            }
+
+            // 2. Construir el objeto Categoría V2 escaneando el DOM
+            const newCategory = {
+                nombre: name,
+                ponderacion: parseInt(ponderacion) || 0,
+                grupos: [] 
+            };
+
+            const groupBlocks = document.querySelectorAll('.group-block');
+            let groupsWeightSum = 0;
+
+            groupBlocks.forEach(block => {
+                const groupName = block.querySelector('.group-name-input').value.trim();
+                const groupWeight = parseInt(block.querySelector('.group-weight-input').value) || 0;
+                
+                // Recolectar criterios de este grupo
+                const criteriaInputs = block.querySelectorAll('.criterion-input');
+                const criterios = Array.from(criteriaInputs)
+                                    .map(input => input.value.trim())
+                                    .filter(val => val !== ''); // Eliminar vacíos
+
+                if (groupName && criterios.length > 0) {
+                    newCategory.grupos.push({
+                        nombre: groupName,
+                        ponderacion: groupWeight,
+                        criterios: criterios
+                    });
+                    groupsWeightSum += groupWeight;
+                }
+            });
+
+            if (newCategory.grupos.length === 0) {
+                alert("Debes añadir al menos un grupo con criterios.");
+                return;
+            }
+
+            // Validación de Matemáticas (Opcional pero recomendada)
+            if (groupsWeightSum !== 100) {
+                const confirmSave = confirm(`La suma de los grupos es ${groupsWeightSum}% (debería ser 100%). ¿Deseas guardar de todos modos?`);
+                if (!confirmSave) return;
+            }
+
+            // 3. Guardar en Firebase
+            const index = document.getElementById('categoryId').value;
             const templateRef = doc(db, "evaluation_templates", currentUser.id);
             const templateDoc = await getDoc(templateRef);
-            let categorias = templateDoc.exists() && Array.isArray(templateDoc.data().categorias) ? templateDoc.data().categorias : [];
+            
+            // Obtenemos lo que hay y normalizamos para no mezclar esquemas
+            let rawCategories = templateDoc.exists() ? templateDoc.data().categorias || [] : [];
+            let categorias = normalizeCategories(rawCategories);
 
             if (index !== '') {
                 categorias[parseInt(index)] = newCategory;
@@ -1244,11 +1482,14 @@
                 categorias.push(newCategory);
             }
 
+            // Guardamos. Nota: Al guardar "newCategory", ya estamos guardando la estructura {grupos: [...]}.
+            // Los datos viejos se actualizarán al nuevo formato automáticamente.
             await setDoc(templateRef, { categorias });
+            
             showSyncIndicator('supervisorSyncIndicator');
             closeCategoryModal();
-            renderCategoryManagement();
-        });
+            renderCategoryManagement(); // Esto repintará la lista con los nuevos grupos
+        }
 
         async function deleteCategory(index) {
             showConfirmModal('Eliminar Categoría', '¿Estás seguro?', async () => {
@@ -1264,6 +1505,8 @@
         
         async function updatePonderacionTotal() {
             const templateDoc = await getDoc(doc(db, "evaluation_templates", currentUser.id));
+            // Usamos rawCategories porque solo sumamos las ponderaciones PADRE (Categorías), 
+            // la normalización interna no afecta este total visual superior.
             const categorias = templateDoc.exists() ? templateDoc.data().categorias || [] : [];
             const total = categorias.reduce((sum, cat) => sum + (parseInt(cat.ponderacion) || 0), 0);
             const totalEl = document.getElementById('totalPonderacion');
@@ -1295,82 +1538,121 @@
             const month = document.getElementById('evaluationMonth').value;
             const year = document.getElementById('evaluationYear').value;
             const container = document.getElementById('evaluationCategoriesContainer');
+            
+            // Loader visual
             container.innerHTML = '<div class="skeleton h-48 w-full"></div>';
 
+            // 1. Obtener la Plantilla y NORMALIZARLA (Clave para V2)
             const templateDoc = await getDoc(doc(db, "evaluation_templates", currentUser.id));
-            if (!templateDoc.exists() || !templateDoc.data().categorias) {
+            if (!templateDoc.exists()) {
                 container.innerHTML = '<p class="text-red-500">Error: No se encontró tu plantilla de evaluación. Por favor, crea una primero.</p>';
                 return;
             }
-            const template = templateDoc.data().categorias;
+            // Usamos el adaptador del Paso 1 para asegurar estructura de grupos
+            const template = normalizeCategories(templateDoc.data().categorias || []);
 
+            // 2. Obtener datos previos si existen (Edición)
             const evalId = `${asesorId}_${year}_${month}`;
             const evalDoc = await getDoc(doc(db, "evaluations", evalId));
             const existingData = evalDoc.exists() ? evalDoc.data() : {};
             
             currentEvaluationBadges = existingData.insigniasOtorgadas || [];
             
+            // 3. Renderizar Formulario General (Inputs fijos)
             container.innerHTML = '';
             
             container.innerHTML += `
-                <div class="p-4 border rounded-lg bg-gray-50">
-                    <h4 class="font-bold mb-2">Resumen General y Enlaces</h4>
-                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="p-4 border rounded-lg bg-gray-50 mb-6 shadow-sm">
+                    <h4 class="font-bold mb-2 text-gray-700 border-b pb-2">Resumen General y Metas</h4>
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                         <div>
-                           <label class="block text-sm font-medium">Calificación General (0-10)</label>
-                           <input type="number" id="evalGeneralScore" value="${existingData.calificacionGeneral || ''}" class="mt-1 w-full p-2 border rounded-lg bg-gray-200" readonly>
+                           <label class="block text-sm font-medium text-gray-600">Calificación General (Cálculo Automático)</label>
+                           <input type="number" id="evalGeneralScore" value="${existingData.calificacionGeneral || ''}" class="mt-1 w-full p-2 border border-gray-300 rounded-lg bg-gray-200 text-blue-800 font-bold" readonly>
                         </div>
                          <div>
-                           <label class="block text-sm font-medium">Meta de Llamadas (%)</label>
-                           <input type="number" id="evalCallsTarget" min="0" max="100" value="${existingData.metaLlamadas || ''}" class="mt-1 w-full p-2 border rounded-lg">
+                           <label class="block text-sm font-medium text-gray-600">Meta de Llamadas (%)</label>
+                           <input type="number" id="evalCallsTarget" min="0" max="100" value="${existingData.metaLlamadas || ''}" class="mt-1 w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                         </div>
                          <div>
-                           <label class="block text-sm font-medium">Enlace "Detalles de Evaluación"</label>
-                           <input type="url" id="evalDetailsLink" value="${existingData.enlaceDetalles || ''}" class="mt-1 w-full p-2 border rounded-lg">
+                           <label class="block text-sm font-medium text-gray-600">Enlace "Detalles de Evaluación"</label>
+                           <input type="url" id="evalDetailsLink" value="${existingData.enlaceDetalles || ''}" class="mt-1 w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                         </div>
                          <div>
-                           <label class="block text-sm font-medium">Enlace "Crear Plan de Trabajo"</label>
-                           <input type="url" id="evalWorkPlanLink" value="${existingData.enlacePlanTrabajo || ''}" class="mt-1 w-full p-2 border rounded-lg">
+                           <label class="block text-sm font-medium text-gray-600">Enlace "Crear Plan de Trabajo"</label>
+                           <input type="url" id="evalWorkPlanLink" value="${existingData.enlacePlanTrabajo || ''}" class="mt-1 w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                         </div>
                     </div>
                     <div class="mt-4">
-                        <label class="block text-sm font-medium">Comentarios Generales</label>
-                        <textarea id="evalGeneralComments" rows="3" class="mt-1 w-full p-2 border rounded-lg">${existingData.comentariosGenerales || ''}</textarea>
+                        <label class="block text-sm font-medium text-gray-600">Comentarios Generales</label>
+                        <textarea id="evalGeneralComments" rows="3" class="mt-1 w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">${existingData.comentariosGenerales || ''}</textarea>
                     </div>
                     <div class="mt-4">
-                        <label class="block text-sm font-medium">Texto para "Plan de Trabajo"</label>
-                        <textarea id="evalWorkPlanText" rows="3" class="mt-1 w-full p-2 border rounded-lg">${existingData.textoPlanTrabajo || ''}</textarea>
+                        <label class="block text-sm font-medium text-gray-600">Texto para "Plan de Trabajo"</label>
+                        <textarea id="evalWorkPlanText" rows="3" class="mt-1 w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">${existingData.textoPlanTrabajo || ''}</textarea>
                     </div>
                 </div>
             `;
             
+            // 4. Renderizar Categorías y Grupos Dinámicos
             template.forEach(cat => {
                 const catData = existingData.categoriasEvaluadas ? existingData.categoriasEvaluadas[cat.nombre] || {} : {};
-                const criteriaHTML = cat.criterios.map(crit => `
-                     <div class="grid grid-cols-3 gap-2 items-center">
-                        <label class="text-sm col-span-2">${crit}</label>
-                        <input type="number" min="0" max="10" data-category="${cat.nombre}" data-criterion="${crit}" value="${(catData.criterios && catData.criterios[crit] !== undefined) ? catData.criterios[crit] : ''}" class="criterion-score w-full p-1 border rounded-lg text-center">
-                     </div>
-                `).join('');
+                
+                // Generar HTML de los Grupos dentro de la Categoría
+                let groupsHtml = '';
+                
+                cat.grupos.forEach(grupo => {
+                    // Generar inputs para los criterios de este grupo
+                    const criteriaHtml = grupo.criterios.map(crit => `
+                         <div class="grid grid-cols-4 gap-2 items-center mb-2">
+                            <label class="text-sm col-span-3 text-gray-700">${crit}</label>
+                            <input type="number" min="0" max="10" 
+                                   data-category="${cat.nombre}" 
+                                   data-criterion="${crit}" 
+                                   value="${(catData.criterios && catData.criterios[crit] !== undefined) ? catData.criterios[crit] : ''}" 
+                                   class="criterion-score w-full p-1 border border-gray-300 rounded-lg text-center focus:ring-indigo-500 focus:border-indigo-500"
+                                   placeholder="-">
+                         </div>
+                    `).join('');
+
+                    groupsHtml += `
+                        <div class="mb-4 last:mb-0">
+                            <h5 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 border-b border-gray-100 pb-1">
+                                ${grupo.nombre} <span class="font-normal normal-case">(${grupo.ponderacion}%)</span>
+                            </h5>
+                            <div class="pl-2">
+                                ${criteriaHtml}
+                            </div>
+                        </div>
+                    `;
+                });
 
                 container.innerHTML += `
-                    <div class="p-4 border rounded-lg">
-                        <h4 class="font-bold">${cat.nombre}</h4>
-                        <div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="space-y-2">${criteriaHTML}</div>
-                            <div>
-                                <label class="block text-sm font-medium">Comentarios (Calidad)</label>
-                                <textarea data-category="${cat.nombre}" name="comment_calidad" rows="2" class="mt-1 w-full p-2 border rounded-lg">${catData.comentarioCalidad || ''}</textarea>
-                                <label class="block text-sm font-medium mt-2">Comentarios (Supervisión)</label>
-                                <textarea data-category="${cat.nombre}" name="comment_supervision" rows="2" class="mt-1 w-full p-2 border rounded-lg">${catData.comentarioSupervision || ''}</textarea>
+                    <div class="p-5 border rounded-lg bg-white shadow-sm mb-4">
+                        <h4 class="font-bold text-lg text-blue-900 mb-4">${cat.nombre}</h4>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                ${groupsHtml}
+                            </div>
+                            
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-1">Comentarios (Calidad)</label>
+                                    <textarea data-category="${cat.nombre}" name="comment_calidad" rows="3" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">${catData.comentarioCalidad || ''}</textarea>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-1">Comentarios (Supervisión)</label>
+                                    <textarea data-category="${cat.nombre}" name="comment_supervision" rows="3" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">${catData.comentarioSupervision || ''}</textarea>
+                                </div>
                             </div>
                         </div>
                     </div>
                 `;
             });
 
+            // Reactivar el listener para cálculo en tiempo real
             container.addEventListener('input', calculateWeightedScore);
-            calculateWeightedScore(); // Initial calculation
+            calculateWeightedScore(); // Cálculo inicial
         };
 
         document.getElementById('evaluationMonth').addEventListener('change', loadEvaluationFormData);
@@ -1386,9 +1668,10 @@
             const year = document.getElementById('evaluationYear').value;
             const evalId = `${asesorId}_${year}_${month}`;
             
+            // Objeto base
             const evaluationData = {
                 asesorId, month, year, supervisorId: currentUser.id,
-                calificacionGeneral: document.getElementById('evalGeneralScore').value,
+                calificacionGeneral: document.getElementById('evalGeneralScore').value, // Ya viene calculado por calculateWeightedScore
                 metaLlamadas: document.getElementById('evalCallsTarget').value,
                 enlaceDetalles: document.getElementById('evalDetailsLink').value,
                 enlacePlanTrabajo: document.getElementById('evalWorkPlanLink').value,
@@ -1403,8 +1686,11 @@
                 alert("Error: No se encontró la plantilla de evaluación.");
                 return;
             }
-            const templateCategories = templateDoc.data().categorias;
+            
+            // NORMALIZAR para obtener grupos
+            const templateCategories = normalizeCategories(templateDoc.data().categorias || []);
 
+            // Recorrer Categorías y Grupos para construir el objeto de datos
             templateCategories.forEach(cat => {
                 const catName = cat.nombre;
                 const catData = {
@@ -1414,25 +1700,39 @@
                     comentarioSupervision: ''
                 };
                 
-                let totalScore = 0;
-                let scoreCount = 0;
+                let catTotalWeightedScore = 0; // Suma ponderada de los grupos
 
-                cat.criterios.forEach(critName => {
-                    const input = document.querySelector(`#evaluationModal input[data-category="${catName}"][data-criterion="${critName}"]`);
-                    if (input && input.value !== '') {
-                        const score = parseFloat(input.value);
-                        if (!isNaN(score)) {
-                            catData.criterios[critName] = score;
-                            totalScore += score;
-                            scoreCount++;
+                cat.grupos.forEach(grupo => {
+                    const grupoPonderacion = parseFloat(grupo.ponderacion) || 0;
+                    let grupoSum = 0;
+                    let grupoCount = 0;
+
+                    // Recolectar puntajes de este grupo
+                    grupo.criterios.forEach(critName => {
+                        const input = document.querySelector(`#evaluationModal input[data-category="${catName}"][data-criterion="${critName}"]`);
+                        if (input && input.value !== '') {
+                            const score = parseFloat(input.value);
+                            if (!isNaN(score)) {
+                                // Guardamos el criterio plano en el objeto (para compatibilidad de lectura)
+                                catData.criterios[critName] = score;
+                                grupoSum += score;
+                                grupoCount++;
+                            }
                         }
+                    });
+
+                    // Calcular aporte del grupo
+                    if (grupoCount > 0) {
+                        const grupoAvg = grupoSum / grupoCount;
+                        const grupoContribution = grupoAvg * (grupoPonderacion / 100);
+                        catTotalWeightedScore += grupoContribution;
                     }
                 });
 
-                if (scoreCount > 0) {
-                    catData.puntaje = (totalScore / scoreCount).toFixed(2);
-                }
+                // Asignamos el puntaje final calculado de la categoría
+                catData.puntaje = catTotalWeightedScore.toFixed(2);
 
+                // Capturar comentarios
                 const commentCalidad = document.querySelector(`#evaluationModal textarea[data-category="${catName}"][name="comment_calidad"]`);
                 if (commentCalidad) catData.comentarioCalidad = commentCalidad.value;
                 
@@ -1446,7 +1746,8 @@
                 await setDoc(doc(db, "evaluations", evalId), evaluationData, { merge: true });
                 showSyncIndicator('supervisorSyncIndicator');
                 closeEvaluationModal();
-                alert('Evaluación guardada exitosamente.');
+                // Opcional: Recargar tabla si fuese necesario, o mostrar mensaje
+                alert('Evaluación guardada exitosamente con el nuevo cálculo ponderado.');
             } catch(error) {
                 console.error("Error al guardar evaluación:", error);
                 alert('Hubo un error al guardar la evaluación.');
@@ -1530,94 +1831,176 @@
 
                 const data = evalDoc.data();
                 const supervisorId = data.supervisorId;
+                
+                // 1. OBTENER Y NORMALIZAR PLANTILLA
+                // Esto es vital para saber qué criterios pertenecen a qué grupo
                 const templateDoc = await getDoc(doc(db, "evaluation_templates", supervisorId));
-                const template = templateDoc.exists() ? templateDoc.data().categorias || [] : [];
+                const template = normalizeCategories(templateDoc.exists() ? templateDoc.data().categorias || [] : []);
                 
                 let categoriesHTML = '';
-                if (data.categoriasEvaluadas) {
-                    for (const catName in data.categoriasEvaluadas) {
-                        const catData = data.categoriasEvaluadas[catName];
-                        const categoryTemplate = template.find(t => t.nombre === catName);
-                        const ponderacion = categoryTemplate ? categoryTemplate.ponderacion : 0;
+
+                // 2. Iterar sobre la estructura de la plantilla (Categoría > Grupo > Criterio)
+                if (template.length > 0) {
+                    template.forEach(cat => {
+                        const catName = cat.nombre;
+                        // Datos guardados de la evaluación para esta categoría
+                        const catData = data.categoriasEvaluadas && data.categoriasEvaluadas[catName] ? data.categoriasEvaluadas[catName] : {};
+                        
+                        // Puntaje total de la categoría (ya viene calculado con la ponderación nueva desde saveEvaluation)
                         const score = parseFloat(catData.puntaje || 0);
+                        const ponderacion = cat.ponderacion || 0;
+
+                        // Estilos de semáforo
                         const scoreClass = score >= 9 ? 'score-high' : score >= 7 ? 'score-medium' : 'score-low';
                         const borderClass = score >= 9 ? 'border-green-500' : score >= 7 ? 'border-amber-500' : 'border-red-500';
 
-                        let criteriaHTMLList = '<p class="text-xs text-gray-500">No se evaluaron criterios específicos.</p>';
-                        if (catData.criterios && Object.keys(catData.criterios).length > 0) {
-                            criteriaHTMLList = Object.entries(catData.criterios).map(([critName, critScore]) => `
-                                <li class="flex justify-between items-center py-1.5 border-b border-gray-100 last:border-b-0">
-                                    <span class="text-gray-600">${critName}</span>
-                                    <span class="font-bold text-gray-800">${critScore}/10</span>
-                                </li>
-                            `).join('');
-                            criteriaHTMLList = `<ul class="space-y-1 mt-2 bg-slate-50 p-3 rounded-md">${criteriaHTMLList}</ul>`;
+                        // 3. Construir HTML de los Grupos
+                        let groupsHtml = '';
+                        
+                        if (cat.grupos && cat.grupos.length > 0) {
+                            cat.grupos.forEach(grupo => {
+                                // Calculamos el promedio del grupo "al vuelo" para mostrarlo al asesor
+                                let gSum = 0;
+                                let gCount = 0;
+                                let criteriaListHtml = '';
+
+                                grupo.criterios.forEach(crit => {
+                                    // Verificamos si existe calificación para este criterio
+                                    const critScore = catData.criterios ? catData.criterios[crit] : undefined;
+                                    
+                                    if (critScore !== undefined) {
+                                        gSum += parseFloat(critScore);
+                                        gCount++;
+                                        criteriaListHtml += `
+                                            <li class="flex justify-between items-center py-1 border-b border-gray-100 last:border-0 text-sm">
+                                                <span class="text-gray-600">${crit}</span>
+                                                <span class="font-bold text-gray-800">${critScore}</span>
+                                            </li>
+                                        `;
+                                    } else {
+                                         // Criterio en plantilla pero no evaluado (o dato antiguo)
+                                         criteriaListHtml += `
+                                            <li class="flex justify-between items-center py-1 border-b border-gray-100 last:border-0 text-sm opacity-50">
+                                                <span class="text-gray-500">${crit}</span>
+                                                <span class="text-xs text-gray-400">N/A</span>
+                                            </li>
+                                        `;
+                                    }
+                                });
+
+                                const groupAvg = gCount > 0 ? (gSum / gCount).toFixed(2) : '0.00';
+
+                                groupsHtml += `
+                                    <div class="mb-3 bg-slate-50 rounded-lg border border-slate-200 overflow-hidden">
+                                        <div class="px-3 py-2 bg-slate-100 flex justify-between items-center border-b border-slate-200">
+                                            <div>
+                                                <span class="font-bold text-gray-700 text-xs uppercase tracking-wide">${grupo.nombre}</span>
+                                                <span class="text-xs text-gray-500 ml-1">(${grupo.ponderacion}%)</span>
+                                            </div>
+                                            <span class="font-bold text-blue-600 text-sm bg-white px-2 py-0.5 rounded shadow-sm">${groupAvg}</span>
+                                        </div>
+                                        <ul class="px-3 py-2 bg-white">
+                                            ${criteriaListHtml || '<li class="text-xs text-gray-400 italic">Sin datos</li>'}
+                                        </ul>
+                                    </div>
+                                `;
+                            });
+                        } else {
+                            groupsHtml = '<p class="text-sm text-gray-500 italic">Sin estructura de grupos definida.</p>';
                         }
 
+                        // 4. Armar la Tarjeta de la Categoría
                         categoriesHTML += `
-                            <div class="bg-white rounded-xl shadow-md p-5 border-l-4 ${borderClass} transition-all duration-300 hover:shadow-lg">
-                                <div class="flex justify-between items-start mb-2">
+                            <div class="bg-white rounded-xl shadow-md p-5 border-l-4 ${borderClass} transition-all duration-300 hover:shadow-lg mb-4">
+                                <div class="flex justify-between items-start mb-4">
                                     <div>
-                                        <h4 class="font-bold text-lg">${catName}</h4>
-                                        <span class="text-xs font-normal text-gray-400">Ponderación: ${ponderacion}%</span>
+                                        <h4 class="font-bold text-lg text-gray-800">${catName}</h4>
+                                        <span class="text-xs font-normal text-gray-500 bg-gray-100 px-2 py-1 rounded-full">Ponderación Global: ${ponderacion}%</span>
                                     </div>
-                                    <div class="score-circle ${scoreClass}">${score.toFixed(1)}</div>
+                                    <div class="score-circle ${scoreClass} shadow-md transform scale-110">${score.toFixed(2)}</div>
                                 </div>
-                                <div class="text-sm space-y-3 mt-4">
-                                    <p><strong>Comentarios de Calidad:</strong> ${catData.comentarioCalidad || 'N/A'}</p>
-                                    <p><strong>Comentarios de Supervisión:</strong> ${catData.comentarioSupervision || 'N/A'}</p>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 text-sm bg-gray-50 p-3 rounded-lg">
+                                    <div>
+                                        <strong class="text-gray-700 block mb-1">📝 Comentarios Calidad:</strong>
+                                        <p class="text-gray-600 italic">${catData.comentarioCalidad || 'Sin comentarios.'}</p>
+                                    </div>
+                                    <div>
+                                        <strong class="text-gray-700 block mb-1">👀 Comentarios Supervisión:</strong>
+                                        <p class="text-gray-600 italic">${catData.comentarioSupervision || 'Sin comentarios.'}</p>
+                                    </div>
                                 </div>
-                                <div class="mt-4">
-                                    <button onclick="toggleCriteria(this)" class="flex items-center text-sm text-blue-600 font-semibold">
-                                        <span>Ver Criterios</span>
-                                        <svg class="w-4 h-4 ml-1 criteria-toggle" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+
+                                <div>
+                                    <button onclick="toggleCriteria(this)" class="flex items-center text-sm text-blue-600 font-bold hover:text-blue-800 transition-colors w-full text-left focus:outline-none">
+                                        <span class="mr-1">Ver Desglose por Grupos</span>
+                                        <svg class="w-4 h-4 criteria-toggle transform transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div class="criteria-content text-sm">
-                                        ${criteriaHTMLList}
+                                    <div class="criteria-content mt-2">
+                                        ${groupsHtml}
                                     </div>
                                 </div>
                             </div>
                         `;
-                    }
+                    });
+                } else {
+                    categoriesHTML = `<div class="p-4 bg-yellow-50 text-yellow-700 rounded-lg">No se encontró la estructura de evaluación del supervisor.</div>`;
                 }
 
+                // Datos Generales
                 const calificacionGeneral = parseFloat(data.calificacionGeneral || 0);
                 const metaLlamadas = parseInt(data.metaLlamadas || 0);
 
-
+                // Renderizado Final del Tab Resumen
                 resumenContainer.innerHTML = `
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <div class="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 p-6 flex flex-col items-center justify-center text-center border-t-4 border-blue-500">
-                             <h3 class="font-bold text-gray-600 text-sm uppercase tracking-wider">⭐ Calificación General</h3>
-                             <p class="text-5xl font-bold text-blue-600 my-2">${calificacionGeneral.toFixed(1)}<span class="text-2xl text-gray-400">/10</span></p>
-                             <div class="w-full bg-gray-200 rounded-full h-2.5">
-                                 <div class="progress-bar h-2.5 rounded-full" style="width: ${calificacionGeneral * 10}%"></div>
+                        <div class="bg-white rounded-xl shadow-md p-6 flex flex-col items-center justify-center text-center border-t-4 border-blue-600 relative overflow-hidden">
+                             <div class="absolute top-0 right-0 p-2 opacity-10">
+                                <svg class="w-24 h-24" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                             </div>
+                             <h3 class="font-bold text-gray-500 text-sm uppercase tracking-wider mb-1">Calificación General</h3>
+                             <p class="text-6xl font-extrabold text-blue-600 my-2 tracking-tight">${calificacionGeneral.toFixed(2)}</p>
+                             <div class="w-full bg-gray-200 rounded-full h-3 mt-2">
+                                 <div class="progress-bar h-3 rounded-full shadow-inner" style="width: ${calificacionGeneral * 10}%"></div>
                              </div>
                         </div>
-                        <div class="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 p-6 flex flex-col items-center justify-center text-center border-t-4 border-orange-500">
-                             <h3 class="font-bold text-gray-600 text-sm uppercase tracking-wider">🎯 Meta de Llamadas</h3>
-                             <p class="text-5xl font-bold text-orange-500 my-2">${metaLlamadas}<span class="text-2xl text-gray-400">%</span></p>
-                             <div class="w-full bg-gray-200 rounded-full h-2.5">
-                                 <div class="progress-bar-orange h-2.5 rounded-full" style="width: ${metaLlamadas}%"></div>
+
+                        <div class="bg-white rounded-xl shadow-md p-6 flex flex-col items-center justify-center text-center border-t-4 border-orange-500 relative overflow-hidden">
+                             <div class="absolute top-0 right-0 p-2 opacity-10">
+                                <svg class="w-24 h-24" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 00-1-1H3zm6 9a1 1 0 100-2 1 1 0 000 2zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/></svg>
+                             </div>
+                             <h3 class="font-bold text-gray-500 text-sm uppercase tracking-wider mb-1">Meta de Llamadas</h3>
+                             <p class="text-6xl font-extrabold text-orange-500 my-2 tracking-tight">${metaLlamadas}%</p>
+                             <div class="w-full bg-gray-200 rounded-full h-3 mt-2">
+                                 <div class="progress-bar-orange h-3 rounded-full shadow-inner" style="width: ${metaLlamadas}%"></div>
                              </div>
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-xl shadow-md p-6 border-t-4 border-slate-400 mb-6">
-                         <h3 class="font-bold text-lg mb-2">Comentarios Generales del Supervisor</h3>
-                         <p class="text-sm text-gray-700">${data.comentariosGenerales || 'Sin comentarios generales.'}</p>
+                    <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-slate-400 mb-8 bg-gradient-to-r from-white to-slate-50">
+                         <h3 class="font-bold text-lg mb-2 text-slate-800 flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path></svg>
+                            Feedback General del Supervisor
+                         </h3>
+                         <p class="text-gray-700 leading-relaxed">${data.comentariosGenerales || 'Sin comentarios generales disponibles.'}</p>
                     </div>
 
-                    <div class="space-y-4 mb-6">${categoriesHTML}</div>
+                    <div class="space-y-6">${categoriesHTML}</div>
                     
-                    <div class="mt-6 text-center">
-                        <a href="${data.enlaceDetalles || '#'}" target="_blank" class="btn-primary inline-block text-white font-semibold py-3 px-8 rounded-lg">Ver Detalles de Evaluación</a>
+                    <div class="mt-8 text-center flex justify-center space-x-4">
+                        <a href="${data.enlaceDetalles || '#'}" target="_blank" class="btn-primary inline-flex items-center text-white font-semibold py-3 px-6 rounded-lg shadow hover:shadow-lg transition-transform hover:-translate-y-1">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                            Ver Detalles (PDF/Drive)
+                        </a>
                     </div>
                 `;
-                
+
+                // Re-inicializar la funcionalidad de colapso/expansión manual si fuera necesaria
+                // Nota: La función toggleCriteria ya existe globalmente en el index.html original.
+
             } catch (error) {
                  console.error("Error renderizando dashboard de asesor:", error);
-                 resumenContainer.innerHTML = `<div class="text-center p-10 bg-red-100 text-red-700 rounded-lg shadow-lg"><h3 class="text-xl font-bold">Error al Cargar</h3><p class="mt-2">Hubo un problema al cargar tu evaluación. Por favor, intenta de nuevo más tarde.</p></div>`;
+                 resumenContainer.innerHTML = `<div class="text-center p-10 bg-red-50 text-red-700 rounded-lg shadow border border-red-200"><h3 class="text-xl font-bold">Error al Cargar</h3><p class="mt-2 text-sm">Hubo un problema al cargar tu evaluación. Intenta recargar la página.</p></div>`;
             }
         }
         
@@ -1744,13 +2127,22 @@
                 alert("No se puede exportar porque no tienes una plantilla de evaluación definida.");
                 return;
             }
-            const template = templateDoc.data().categorias || [];
+            
+            // 1. NORMALIZAMOS para asegurar que leemos la estructura de grupos
+            const template = normalizeCategories(templateDoc.data().categorias || []);
+            
+            // 2. Construir Encabezados
             let headers = ["evalId", "asesorId", "asesorNombre", "mes", "año", "calificacionGeneral", "metaLlamadas", "comentariosGenerales", "enlaceDetalles", "enlacePlanTrabajo", "textoPlanTrabajo"];
+            
             template.forEach(cat => {
-                cat.criterios.forEach(crit => {
-                    const cleanCrit = crit.replace(/"/g, '""'); 
-                    headers.push(`"${cat.nombre}_${cleanCrit}_Puntaje"`);
+                cat.grupos.forEach(grupo => {
+                    grupo.criterios.forEach(crit => {
+                        const cleanCrit = crit.replace(/"/g, '""');
+                        // Formato de cabecera: "Categoria - Grupo - Criterio"
+                        headers.push(`"${cat.nombre} - ${grupo.nombre} - ${cleanCrit}"`);
+                    });
                 });
+                // Los comentarios siguen siendo por categoría
                 headers.push(`"${cat.nombre}_ComentarioCalidad"`, `"${cat.nombre}_ComentarioSupervision"`);
             });
             
@@ -1759,6 +2151,7 @@
 
             let csvContent = headers.join(',') + '\n';
 
+            // 3. Construir Filas
             evaluationsSnapshot.forEach(doc => {
                 const e = doc.data();
                 const asesorNombre = usersCache[e.asesorId]?.nombre || 'N/A';
@@ -1774,10 +2167,15 @@
 
                 template.forEach(cat => {
                     const catData = e.categoriasEvaluadas ? e.categoriasEvaluadas[cat.nombre] || {} : {};
-                    cat.criterios.forEach(crit => {
-                        const score = catData.criterios ? catData.criterios[crit] || '' : '';
-                        row.push(score);
+                    
+                    cat.grupos.forEach(grupo => {
+                        grupo.criterios.forEach(crit => {
+                            // Buscamos el puntaje del criterio (guardado plano en el objeto de evaluación)
+                            const score = catData.criterios ? catData.criterios[crit] || '' : '';
+                            row.push(score);
+                        });
                     });
+
                     row.push(`"${(catData.comentarioCalidad || '').replace(/"/g, '""')}"`);
                     row.push(`"${(catData.comentarioSupervision || '').replace(/"/g, '""')}"`);
                 });
@@ -1837,51 +2235,51 @@
             reader.readAsText(file, "UTF-8");
         });
 
-async function importUsersFromCSV(csvData) {
-    const overwrite = document.getElementById('overwriteDataCheckbox').checked;
-    const lines = csvData.split('\n').filter(line => line.trim());
-    if (lines.length < 2) {
-        alert('El archivo CSV está vacío o solo contiene la cabecera.');
-        return;
-    }
-    
-    const headers = parseCSVLine(lines[0]);
-    const batch = writeBatch(db);
-    let operationsCount = 0;
-
-    try {
-    const cleanHeaders = headers.map(h => h.replace(/"/g, ''));
-
-    for (let i = 1; i < lines.length; i++) {
-        const values = parseCSVLine(lines[i]);
-        
-        const record = cleanHeaders.reduce((obj, header, index) => {
-            obj[header] = values[index] || ''; 
-            return obj;
-        }, {});
-
-            if (!record.username) continue;
-            const userRef = doc(db, "users", record.username);
-            const userData = {
-                nombre: record.nombre || '',
-                rol: record.rol || 'asesor',
-                password: record.password || '123',
-                supervisorAsignado: record.supervisorAsignado || null
-            };
+        async function importUsersFromCSV(csvData) {
+            const overwrite = document.getElementById('overwriteDataCheckbox').checked;
+            const lines = csvData.split('\n').filter(line => line.trim());
+            if (lines.length < 2) {
+                alert('El archivo CSV está vacío o solo contiene la cabecera.');
+                return;
+            }
             
-            batch.set(userRef, userData, { merge: !overwrite });
-            operationsCount++;
+            const headers = parseCSVLine(lines[0]);
+            const batch = writeBatch(db);
+            let operationsCount = 0;
+
+            try {
+            const cleanHeaders = headers.map(h => h.replace(/"/g, ''));
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = parseCSVLine(lines[i]);
+                
+                const record = cleanHeaders.reduce((obj, header, index) => {
+                    obj[header] = values[index] || ''; 
+                    return obj;
+                }, {});
+
+                    if (!record.username) continue;
+                    const userRef = doc(db, "users", record.username);
+                    const userData = {
+                        nombre: record.nombre || '',
+                        rol: record.rol || 'asesor',
+                        password: record.password || '123',
+                        supervisorAsignado: record.supervisorAsignado || null
+                    };
+                    
+                    batch.set(userRef, userData, { merge: !overwrite });
+                    operationsCount++;
+                }
+                await batch.commit();
+                alert(`Se han procesado ${operationsCount} registros de usuarios.`);
+                closeImportModal();
+                await loadUsersCache();
+                renderUsersTable();
+            } catch (error) {
+                console.error("Error al importar usuarios CSV:", error);
+                alert("Error al importar el archivo de usuarios. Revisa la consola.");
+            }
         }
-        await batch.commit();
-        alert(`Se han procesado ${operationsCount} registros de usuarios.`);
-        closeImportModal();
-        await loadUsersCache();
-        renderUsersTable();
-    } catch (error) {
-        console.error("Error al importar usuarios CSV:", error);
-        alert("Error al importar el archivo de usuarios. Revisa la consola.");
-    }
-}
 
         async function importSupervisorEvaluationsFromCSV(csvData) {
             const overwrite = document.getElementById('overwriteDataCheckbox').checked;
@@ -1890,7 +2288,9 @@ async function importUsersFromCSV(csvData) {
                 alert("No se puede importar porque no tienes una plantilla de evaluación definida.");
                 return;
             }
-            const template = templateDoc.data().categorias || [];
+            
+            // 1. NORMALIZAR PLANTILLA
+            const template = normalizeCategories(templateDoc.data().categorias || []);
             
             const lines = csvData.split('\n').filter(line => line.trim());
             if (lines.length < 2) {
@@ -1898,15 +2298,17 @@ async function importUsersFromCSV(csvData) {
                 return;
             }
 
-            const headers = lines[0].trim().split(',').map(h => h.replace(/\r/g, ''));
+            // Usamos tu función parseCSVLine para leer cabeceras complejas correctamente
+            const headers = parseCSVLine(lines[0]); 
             const batch = writeBatch(db);
             let operationsCount = 0;
 
             try {
                 for (let i = 1; i < lines.length; i++) {
-                    const values = lines[i].trim().split(',');
+                    const values = parseCSVLine(lines[i]);
                     const record = headers.reduce((obj, header, index) => {
-                        obj[header] = values[index] ? values[index].replace(/"/g, '') : '';
+                        // Limpiamos comillas extra si las hubiera
+                        obj[header.replace(/^"|"$/g, '')] = values[index] ? values[index].replace(/^"|"$/g, '') : '';
                         return obj;
                     }, {});
 
@@ -1923,42 +2325,59 @@ async function importUsersFromCSV(csvData) {
                         categoriasEvaluadas: {}
                     };
 
+                    let finalWeightedScore = 0;
+
+                    // 2. Reconstruir datos usando la estructura de GRUPOS
                     template.forEach(cat => {
                         const catName = cat.nombre;
                         const catData = { criterios: {}, puntaje: 0, comentarioCalidad: '', comentarioSupervision: '' };
-                        let totalScore = 0;
-                        let scoreCount = 0;
+                        
+                        let catTotalWeightedScore = 0;
 
-                        cat.criterios.forEach(crit => {
-                            const score = parseFloat(record[`${catName}_${crit}_Puntaje`]);
-                            if (!isNaN(score)) {
-                                catData.criterios[crit] = score;
-                                totalScore += score;
-                                scoreCount++;
+                        cat.grupos.forEach(grupo => {
+                            let grupoSum = 0;
+                            let grupoCount = 0;
+
+                            grupo.criterios.forEach(crit => {
+                                // Reconstruimos la clave del CSV: "Categoria - Grupo - Criterio"
+                                const csvKey = `${cat.nombre} - ${grupo.nombre} - ${crit}`;
+                                // Intentamos leer el valor
+                                const val = record[csvKey]; 
+                                
+                                if (val && val !== '') {
+                                    const score = parseFloat(val);
+                                    if (!isNaN(score)) {
+                                        catData.criterios[crit] = score;
+                                        grupoSum += score;
+                                        grupoCount++;
+                                    }
+                                }
+                            });
+
+                            // Calcular aporte del grupo (Lógica V2)
+                            if (grupoCount > 0) {
+                                const grupoAvg = grupoSum / grupoCount;
+                                const grupoContribution = grupoAvg * (parseFloat(grupo.ponderacion || 0) / 100);
+                                catTotalWeightedScore += grupoContribution;
                             }
                         });
                         
-                        if (scoreCount > 0) catData.puntaje = (totalScore / scoreCount).toFixed(2);
+                        // Asignar puntaje calculado y comentarios
+                        catData.puntaje = catTotalWeightedScore.toFixed(2);
                         catData.comentarioCalidad = record[`${catName}_ComentarioCalidad`] || '';
                         catData.comentarioSupervision = record[`${catName}_ComentarioSupervision`] || '';
+                        
                         evalData.categoriasEvaluadas[catName] = catData;
+
+                        // Sumar a la calificación general
+                        finalWeightedScore += catTotalWeightedScore * (parseFloat(cat.ponderacion || 0) / 100);
                     });
-                let finalWeightedScore = 0;
 
-                template.forEach(cat => {
-                    const ponderacion = cat.ponderacion || 0;
-                    const catData = evalData.categoriasEvaluadas[cat.nombre];
-
-                    if (catData && catData.puntaje) {
-                        const categoryAverage = parseFloat(catData.puntaje);
-                        const weightedContribution = (categoryAverage / 10) * ponderacion;
-                        finalWeightedScore += weightedContribution;
+                    // Si el CSV no traía calificación general, la calculamos nosotros
+                    if (!evalData.calificacionGeneral || evalData.calificacionGeneral === '') {
+                        evalData.calificacionGeneral = finalWeightedScore.toFixed(2);
                     }
-                });
 
-                if (!evalData.calificacionGeneral) {
-                    evalData.calificacionGeneral = (finalWeightedScore / 10).toFixed(1);
-                }
                     batch.set(evalRef, evalData, { merge: !overwrite });
                     operationsCount++;
                 }
@@ -1969,30 +2388,39 @@ async function importUsersFromCSV(csvData) {
 
             } catch(error) {
                 console.error("Error al importar evaluaciones CSV:", error);
-                alert("Error al importar el archivo de evaluaciones. Revisa la consola y asegúrate que el formato coincida con tu plantilla.");
+                alert("Error al importar: " + error.message);
             }
         }
         
         async function importBadgesFromCSV(csvData) {
             const overwrite = document.getElementById('overwriteDataCheckbox').checked;
             const lines = csvData.split('\n').filter(line => line.trim());
-             if (lines.length < 2) {
+            if (lines.length < 2) {
                 alert('El archivo CSV de insignias está vacío o solo contiene la cabecera.');
                 return;
             }
-            const headers = lines[0].trim().split(',').map(h => h.replace(/\r/g, ''));
+
+            // MEJORA: Usar parseCSVLine en lugar de split(',') para mayor seguridad
+            const headers = parseCSVLine(lines[0]); 
             const batch = writeBatch(db);
             let operationsCount = 0;
 
             try {
+                // Limpiamos comillas de las cabeceras
+                const cleanHeaders = headers.map(h => h.replace(/"/g, ''));
+
                 for (let i = 1; i < lines.length; i++) {
-                    const values = lines[i].trim().split(',');
-                    const record = headers.reduce((obj, header, index) => {
-                        obj[header] = values[index] ? values[index].replace(/"/g, '') : '';
+                    // MEJORA: Usar parseCSVLine para los valores también
+                    const values = parseCSVLine(lines[i]); 
+                    
+                    const record = cleanHeaders.reduce((obj, header, index) => {
+                        // Limpiamos comillas de los valores
+                        obj[header] = values[index] ? values[index].replace(/^"|"$/g, '') : '';
                         return obj;
                     }, {});
 
                     if (!record.id) continue;
+                    
                     const badgeRef = doc(db, "insignias", record.id);
                     const badgeData = {
                         nombre: record.nombre || '',
@@ -2009,7 +2437,7 @@ async function importUsersFromCSV(csvData) {
                 alert(`Se han procesado ${operationsCount} registros de insignias.`);
                 closeImportModal();
                 await loadBadgesCache();
-                renderGlobalBadgesTable();
+                if (typeof renderGlobalBadgesTable === 'function') renderGlobalBadgesTable(); // Validación extra por seguridad
             } catch (error) {
                 console.error("Error al importar insignias CSV:", error);
                 alert("Error al importar el archivo de insignias. Revisa la consola.");
@@ -2023,34 +2451,61 @@ async function importUsersFromCSV(csvData) {
             const templateDoc = await getDoc(doc(db, "evaluation_templates", currentUser.id));
             if (!templateDoc.exists()) return;
             
-            const templateCategories = templateDoc.data().categorias || [];
+            // 1. Obtenemos datos y normalizamos para asegurar estructura de grupos
+            let rawCategories = templateDoc.data().categorias || [];
+            const templateCategories = normalizeCategories(rawCategories);
+            
             let finalWeightedScore = 0;
 
+            // 2. Iteramos Nivel CATEGORÍA
             templateCategories.forEach(cat => {
-                const ponderacion = cat.ponderacion || 0;
-                const criteriaInputs = document.querySelectorAll(`#evaluationModal input[data-category="${cat.nombre}"].criterion-score`);
-                
-                let totalScore = 0;
-                let scoreCount = 0;
+                const catPonderacion = parseFloat(cat.ponderacion) || 0;
+                let catTotalScore = 0; // Puntaje acumulado de la categoría (suma de grupos ponderados)
 
-                criteriaInputs.forEach(input => {
-                    if (input.value !== '') {
-                        const score = parseFloat(input.value);
-                        if (!isNaN(score) && score >= 0 && score <= 10) {
-                            totalScore += score;
-                            scoreCount++;
+                // 3. Iteramos Nivel GRUPO
+                cat.grupos.forEach(grupo => {
+                    const grupoPonderacion = parseFloat(grupo.ponderacion) || 0;
+                    
+                    // Buscamos los inputs que pertenecen a este Grupo Específico
+                    // NOTA: En el paso 2 de implementación (próxima interacción) actualizaremos el HTML del modal
+                    // para incluir data-group. Por ahora, buscamos por criterio para mantener compatibilidad V1.
+                    
+                    let grupoSum = 0;
+                    let grupoCount = 0;
+
+                    grupo.criterios.forEach(critName => {
+                        // Selector robusto: Intenta buscar por categoría Y criterio.
+                        const input = document.querySelector(`#evaluationModal input[data-category="${cat.nombre}"][data-criterion="${critName}"]`);
+                        
+                        if (input && input.value !== '') {
+                            const score = parseFloat(input.value);
+                            if (!isNaN(score) && score >= 0 && score <= 10) {
+                                grupoSum += score;
+                                grupoCount++;
+                            }
                         }
+                    });
+
+                    // 4. Cálculo Promedio del Grupo (Nivel 2)
+                    if (grupoCount > 0) {
+                        const grupoAverage = grupoSum / grupoCount; // Promedio simple (0-10)
+                        
+                        // 5. Contribución del Grupo a la Categoría (Nivel 3)
+                        // Fórmula: (PromedioGrupo * (PesoGrupo / 100))
+                        const grupoContribution = grupoAverage * (grupoPonderacion / 100);
+                        catTotalScore += grupoContribution;
                     }
                 });
 
-                if (scoreCount > 0) {
-                    const categoryAverage = totalScore / scoreCount;
-                    const weightedContribution = (categoryAverage / 100) * ponderacion;
-                    finalWeightedScore += weightedContribution;
-                }
+                // 6. Contribución de la Categoría a la General (Nivel 4)
+                // Fórmula: (PuntajeCategoria * (PesoCategoria / 100))
+                // Nota: catTotalScore ya está en escala 0-10 ponderada por sus grupos.
+                const catContribution = catTotalScore * (catPonderacion / 100);
+                
+                finalWeightedScore += catContribution;
             });
 
-            const finalScoreOutOf10 = finalWeightedScore.toFixed(1);
+            const finalScoreOutOf10 = finalWeightedScore.toFixed(2); // Cambiado a 2 decimales según requerimiento
             const scoreInput = document.getElementById('evalGeneralScore');
             if (scoreInput) {
                 scoreInput.value = finalScoreOutOf10;
@@ -2067,7 +2522,12 @@ async function importUsersFromCSV(csvData) {
             yearSelect.innerHTML = availablePeriods.years.map(y => `<option value="${y}">${y}</option>`).join('');
             monthSelect.addEventListener('change', loadSupervisorCharts);
             yearSelect.addEventListener('change', loadSupervisorCharts);
-        }     
+        }
+        
+
+        
+        
+        
         
         async function loadSupervisorCharts() {
             const month = document.getElementById('supervisorMonthSelector').value;
@@ -2126,7 +2586,6 @@ async function importUsersFromCSV(csvData) {
                 }
             });
         }
-
         function setupSuperAdminChartSelectors() {
             const monthSelect = document.getElementById('superAdminMonthSelector');
             const yearSelect = document.getElementById('superAdminYearSelector');
@@ -2529,7 +2988,35 @@ async function importUsersFromCSV(csvData) {
             html += '</div>';
             container.innerHTML = html;
         }
+        // ======================= NUEVAS FUNCIONES DE LÓGICA V2 (NORMALIZACIÓN) =======================
 
+        /**
+         * Convierte estructuras antiguas (Solo criterios) a la nueva (Grupos > Criterios).
+         * Garantiza que el sistema siempre trabaje con 'grupos', aunque la BD tenga datos viejos.
+         */
+        function normalizeCategories(categorias) {
+            if (!Array.isArray(categorias)) return [];
+            
+            return categorias.map(cat => {
+                // CASO V2: La categoría ya tiene grupos definidos. Se retorna tal cual.
+                if (cat.grupos && Array.isArray(cat.grupos) && cat.grupos.length > 0) {
+                    return cat;
+                }
+                
+                // CASO V1 (Retrocompatibilidad): Tiene criterios sueltos pero no grupos.
+                // Creamos un "Grupo General" que vale el 100% de la categoría y metemos los criterios ahí.
+                return {
+                    ...cat,
+                    grupos: [{
+                        nombre: 'General',
+                        ponderacion: 100,
+                        criterios: cat.criterios || []
+                    }],
+                    // Mantenemos la propiedad criterios vacía o nula para evitar confusiones futuras
+                    criterios: null 
+                };
+            });
+        }
         // ======================= EXPOSICIÓN DE FUNCIONES GLOBALES =======================
         window.logout = logout;
         window.openUserModal = openUserModal;
@@ -2537,9 +3024,15 @@ async function importUsersFromCSV(csvData) {
         window.deleteUser = deleteUser;
         window.saveLoginTitles = saveLoginTitles;
         window.saveAvailablePeriods = saveAvailablePeriods;
+        
+        // --- AQUÍ ESTABAN FALTANDO LAS FUNCIONES NUEVAS DE GRUPOS ---
         window.openCategoryModal = openCategoryModal;
         window.closeCategoryModal = closeCategoryModal;
-        window.addCriterionInput = addCriterionInput;
+        window.addGroupBlock = addGroupBlock;             // <--- FALTABA ESTA
+        window.addCriterionToGroup = addCriterionToGroup; // <--- FALTABA ESTA
+        window.submitCategoryForm = submitCategoryForm;   // <--- FALTABA ESTA
+        // ------------------------------------------------------------
+
         window.deleteCategory = deleteCategory;
         window.openEvaluationModal = openEvaluationModal;
         window.closeEvaluationModal = closeEvaluationModal;
@@ -2564,6 +3057,7 @@ async function importUsersFromCSV(csvData) {
         window.openGrantBadgeModal = openGrantBadgeModal;
         window.closeGrantBadgeModal = closeGrantBadgeModal;
         window.exportBadgesToCSV = exportBadgesToCSV;
+        
         // Sincronización Manual
         window.forceSyncToFirebase = async () => {
              showConfirmModal('Sincronizar a Firebase', 'Esto sobrescribirá los datos en Firebase con los datos locales actuales. ¿Continuar?', async () => {
