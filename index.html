@@ -927,37 +927,59 @@
     
     <!-- SCRIPT PRINCIPAL DE LA APLICACIÓN -->
     <script type="module" defer>
-        // Importar funciones de Firebase 9+ (versión modular)
+        // 1. IMPORTACIONES
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        // 🚨 LÍNEA 1: IMPORTAR AUTH 🚨 
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js"; 
-        import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, query, where, writeBatch, serverTimestamp, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-        // Configuración de Firebase (proporcionada por el usuario)
+        // 2. IMPORTAR AUTH (Anónimo)
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js"; 
+
+        // 3. IMPORTAR FIRESTORE (Herramientas completas)
+        // Nota: Dejé orderBy y limit aquí por seguridad, para que no fallen tus gráficas si las usan.
+        import { 
+            getFirestore, 
+            initializeFirestore, 
+            doc, 
+            getDoc, 
+            setDoc, 
+            updateDoc, 
+            deleteDoc, 
+            collection, 
+            getDocs, 
+            query, 
+            where, 
+            writeBatch, 
+            serverTimestamp, 
+            addDoc,
+            orderBy, 
+            limit 
+        } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+        // CONFIGURACIÓN
         const firebaseConfig = {
-          apiKey: "AIzaSyDApFuzCg6bxKNniw7mTzcZAeAbwOV1mgY",
-          authDomain: "appevaluacionse.firebaseapp.com",
-          projectId: "appevaluacionse",
-          storageBucket: "appevaluacionse.firebasestorage.app",
-          messagingSenderId: "52140253389",
-          appId: "1:52140253389:web:80fa2267b27d3472d78984",
-          measurementId: "G-QFHR58RGH8"
+            apiKey: "AIzaSyDApFuzCg6bxKNniw7mTzcZAeAbwOV1mgY",
+            authDomain: "appevaluacionse.firebaseapp.com",
+            projectId: "appevaluacionse",
+            storageBucket: "appevaluacionse.firebasestorage.app",
+            messagingSenderId: "52140253389",
+            appId: "1:52140253389:web:80fa2267b27d3472d78984",
+            measurementId: "G-QFHR58RGH8"
         };
 
-        // Inicialización de Firebase
+        // INICIALIZACIÓN
         const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        
+        // CORRECCIÓN: Long Polling para red universitaria
+        const db = initializeFirestore(app, {
+            experimentalForceLongPolling: true, 
+            useFetchStreams: false
+        });
 
-        // 🚨 ESTAS TRES LÍNEAS DEBEN ESTAR AQUÍ, AFUERA DE CUALQUIER FUNCIÓN 🚨
         const auth = getAuth(app); 
 
+        // INICIO DE SESIÓN
         signInAnonymously(auth)
-            .then(() => {
-                console.log("Sesión anónima iniciada. Reglas de seguridad habilitadas.");
-            })
-            .catch((error) => {
-                console.error("Error al iniciar sesión anónima:", error);
-        });
+            .then(() => console.log("Sesión anónima iniciada."))
+            .catch((error) => console.error("Error Auth:", error));
 
         // Variables de estado globales
         let currentUser = null;
@@ -1071,7 +1093,7 @@
         async function navigateToRoleScreen(role) {
             document.getElementById('loginScreen').classList.add('hidden');
             document.getElementById('loginScreen').classList.remove('flex');
-            
+            await loadBadgesCache();
             await loadUsersCache();
             await loadAvailablePeriods();
 
@@ -1128,12 +1150,10 @@
             const tbody = document.getElementById('usersTableBody');
             tbody.innerHTML = '';
 
-        let filteredUsers = Object.values(usersCache).filter(user => {
-                const nombre = (user.nombre || '').toLowerCase();
-                const id = (user.id || '').toLowerCase();
-                const busqueda = (userTableState.searchTerm || '').toLowerCase();
-                return nombre.includes(busqueda) || id.includes(busqueda);
-        });
+            let filteredUsers = Object.values(usersCache).filter(user => 
+                user.nombre.toLowerCase().includes(userTableState.searchTerm) ||
+                user.id.toLowerCase().includes(userTableState.searchTerm)
+            );
 
             filteredUsers.sort((a, b) => {
                 let valA = a[userTableState.sortKey] || '';
@@ -1170,16 +1190,10 @@
                 paginatedUsers.forEach(user => {
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td class="px-6 py-4 whitespace-nowrap">${user.nombre || 'Sin nombre'}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${user.id || 'N/A'}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${(user.rol || '').toLowerCase() === 'supervisor' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}">
-                                ${user.rol || 'asesor'}
-                            </span>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            ${user.supervisorAsignado ? (usersCache[user.supervisorAsignado]?.nombre || 'No encontrado') : 'N/A'}
-                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">${user.nombre}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${user.id}</td>
+                        <td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.rol === 'supervisor' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}">${user.rol}</span></td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${user.supervisorAsignado ? usersCache[user.supervisorAsignado]?.nombre || 'N/A' : 'N/A'}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <button onclick="openUserModal('${user.id}')" class="text-indigo-600 hover:text-indigo-900">Editar</button>
                         </td>
@@ -1956,13 +1970,18 @@ async function saveEvaluation() {
                 alert("Error: No se encontró la plantilla de evaluación.");
                 return;
             }
-            
-            // NORMALIZAR para obtener grupos
-            const templateCategories = normalizeCategories(templateDoc.data().categorias || []);
-
+            // 👇👇👇 AQUI ES DONDE DEBES AGREGAR LA LÍNEA FALTANTE 👇👇👇
+            const templateCategories = normalizeCategories(templateDoc.data().categorias || []); 
+            // 👆👆👆 ESTA LÍNEA ES INDISPENSABLE
+            // --- INICIO DE LA LÓGICA DE CÁLCULO CORREGIDA ---
+            let sumaPuntajesPonderados = 0;
+            let sumaPesosTotales = 0;
+        
             // Recorrer Categorías y Grupos para construir el objeto de datos
             templateCategories.forEach(cat => {
                 const catName = cat.nombre;
+                const catPonderacion = parseFloat(cat.ponderacion) || 0;
+        
                 const catData = {
                     criterios: {},
                     puntaje: 0,
@@ -1970,47 +1989,59 @@ async function saveEvaluation() {
                     comentarioSupervision: ''
                 };
                 
-                let catTotalWeightedScore = 0; // Suma ponderada de los grupos
-
+                let catScore0to10 = 0; // Puntaje interno de la categoría (0-10)
+        
                 cat.grupos.forEach(grupo => {
                     const grupoPonderacion = parseFloat(grupo.ponderacion) || 0;
                     let grupoSum = 0;
                     let grupoCount = 0;
-
+        
                     // Recolectar puntajes de este grupo
                     grupo.criterios.forEach(critName => {
                         const input = document.querySelector(`#evaluationModal input[data-category="${catName}"][data-criterion="${critName}"]`);
                         if (input && input.value !== '') {
                             const score = parseFloat(input.value);
                             if (!isNaN(score)) {
-                                // Guardamos el criterio plano en el objeto (para compatibilidad de lectura)
                                 catData.criterios[critName] = score;
                                 grupoSum += score;
                                 grupoCount++;
                             }
                         }
                     });
-
-                    // Calcular aporte del grupo
+        
+                    // Calcular aporte del grupo a la categoría
                     if (grupoCount > 0) {
                         const grupoAvg = grupoSum / grupoCount;
                         const grupoContribution = grupoAvg * (grupoPonderacion / 100);
-                        catTotalWeightedScore += grupoContribution;
+                        catScore0to10 += grupoContribution;
                     }
                 });
-
+        
                 // Asignamos el puntaje final calculado de la categoría
-                catData.puntaje = catTotalWeightedScore.toFixed(2);
-
-                // Capturar comentarios
+                catData.puntaje = catScore0to10.toFixed(2);
+        
+                // --- AQUÍ ESTÁ EL CAMBIO CRUCIAL PARA EL PROMEDIO GENERAL ---
+                if (catPonderacion > 0) {
+                    sumaPuntajesPonderados += catScore0to10 * catPonderacion;
+                    sumaPesosTotales += catPonderacion;
+                }
+        
+                // Capturar comentarios (sin cambios)
                 const commentCalidad = document.querySelector(`#evaluationModal textarea[data-category="${catName}"][name="comment_calidad"]`);
                 if (commentCalidad) catData.comentarioCalidad = commentCalidad.value;
                 
                 const commentSupervision = document.querySelector(`#evaluationModal textarea[data-category="${catName}"][name="comment_supervision"]`);
                 if (commentSupervision) catData.comentarioSupervision = commentSupervision.value;
-
+        
                 evaluationData.categoriasEvaluadas[catName] = catData;
             });
+        
+            // CÁLCULO FINAL DE LA NOTA GENERAL
+            if (sumaPesosTotales > 0) {
+                evaluationData.calificacionGeneral = (sumaPuntajesPonderados / sumaPesosTotales).toFixed(2);
+            } else {
+                evaluationData.calificacionGeneral = "0.00";
+            }
 
             try {
                 await setDoc(doc(db, "evaluations", evalId), evaluationData, { merge: true });
@@ -2022,7 +2053,7 @@ async function saveEvaluation() {
                 console.error("Error al guardar evaluación:", error);
                 alert('Hubo un error al guardar la evaluación.');
             }
-        };
+        }
 
 
         // ======================= VISTA ASESOR =======================
@@ -2261,7 +2292,7 @@ async function renderAsesorDashboard() {
             if (configDoc.exists()) {
                 const data = configDoc.data();
                 availablePeriods.years = data.availableYears || [new Date().getFullYear().toString()];
-                availablePeriods.months = data.availableMonths || ["M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "M10", "M11", "M12"];
+                availablePeriods.months = data.availableMonths || ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
             }
         }
         
@@ -2656,30 +2687,26 @@ async function renderAsesorDashboard() {
             const templateDoc = await getDoc(doc(db, "evaluation_templates", currentUser.id));
             if (!templateDoc.exists()) return;
             
-            // 1. Obtenemos datos y normalizamos para asegurar estructura de grupos
+            // 1. Obtenemos datos y normalizamos
             let rawCategories = templateDoc.data().categorias || [];
             const templateCategories = normalizeCategories(rawCategories);
             
-            let finalWeightedScore = 0;
-
+            // --- LÓGICA CORREGIDA (IGUAL QUE EN SAVEEVALUATION) ---
+            let sumaPuntajesPonderados = 0;
+            let sumaPesosTotales = 0;
+        
             // 2. Iteramos Nivel CATEGORÍA
             templateCategories.forEach(cat => {
                 const catPonderacion = parseFloat(cat.ponderacion) || 0;
-                let catTotalScore = 0; // Puntaje acumulado de la categoría (suma de grupos ponderados)
-
+                let catScore0to10 = 0; 
+        
                 // 3. Iteramos Nivel GRUPO
                 cat.grupos.forEach(grupo => {
                     const grupoPonderacion = parseFloat(grupo.ponderacion) || 0;
-                    
-                    // Buscamos los inputs que pertenecen a este Grupo Específico
-                    // NOTA: En el paso 2 de implementación (próxima interacción) actualizaremos el HTML del modal
-                    // para incluir data-group. Por ahora, buscamos por criterio para mantener compatibilidad V1.
-                    
                     let grupoSum = 0;
                     let grupoCount = 0;
-
+        
                     grupo.criterios.forEach(critName => {
-                        // Selector robusto: Intenta buscar por categoría Y criterio.
                         const input = document.querySelector(`#evaluationModal input[data-category="${cat.nombre}"][data-criterion="${critName}"]`);
                         
                         if (input && input.value !== '') {
@@ -2690,27 +2717,28 @@ async function renderAsesorDashboard() {
                             }
                         }
                     });
-
-                    // 4. Cálculo Promedio del Grupo (Nivel 2)
+        
                     if (grupoCount > 0) {
-                        const grupoAverage = grupoSum / grupoCount; // Promedio simple (0-10)
-                        
-                        // 5. Contribución del Grupo a la Categoría (Nivel 3)
-                        // Fórmula: (PromedioGrupo * (PesoGrupo / 100))
+                        const grupoAverage = grupoSum / grupoCount; 
                         const grupoContribution = grupoAverage * (grupoPonderacion / 100);
-                        catTotalScore += grupoContribution;
+                        catScore0to10 += grupoContribution;
                     }
                 });
-
-                // 6. Contribución de la Categoría a la General (Nivel 4)
-                // Fórmula: (PuntajeCategoria * (PesoCategoria / 100))
-                // Nota: catTotalScore ya está en escala 0-10 ponderada por sus grupos.
-                const catContribution = catTotalScore * (catPonderacion / 100);
-                
-                finalWeightedScore += catContribution;
+        
+                // 4. ACUMULAMOS SOLO SI TIENE PESO (NORMALIZACIÓN)
+                if (catPonderacion > 0) {
+                    sumaPuntajesPonderados += catScore0to10 * catPonderacion;
+                    sumaPesosTotales += catPonderacion;
+                }
             });
-
-            const finalScoreOutOf10 = finalWeightedScore.toFixed(2); // Cambiado a 2 decimales según requerimiento
+        
+            // 5. División final segura
+            let finalScore = 0;
+            if (sumaPesosTotales > 0) {
+                finalScore = sumaPuntajesPonderados / sumaPesosTotales;
+            }
+        
+            const finalScoreOutOf10 = finalScore.toFixed(2);
             const scoreInput = document.getElementById('evalGeneralScore');
             if (scoreInput) {
                 scoreInput.value = finalScoreOutOf10;
@@ -2953,7 +2981,7 @@ async function renderAsesorDashboard() {
                         <td class="px-4 py-2 text-2xl">${badge.icono}</td>
                         <td class="px-4 py-2 font-medium">${badge.nombre}</td>
                         <td class="px-4 py-2">
-                             <button onclick="openBadgeModal('${badge.id}')" class="text-indigo-600 hover:text-indigo-900 text-sm mr-2">Editar</button>
+                             <button onclick="openBadgeModal('${badge.id}', false)" class="text-indigo-600 hover:text-indigo-900 text-sm mr-2">Editar</button>
                              <button onclick="deleteBadge('${badge.id}')" class="text-red-600 hover:text-red-900 text-sm">Eliminar</button>
                         </td>
                     `;
@@ -3109,7 +3137,9 @@ async function renderAsesorDashboard() {
             });
             
             const earnedBadges = Array.from(earnedBadgeIds).map(id => badgesCache[id]).filter(Boolean);
-            const availableBadges = Object.values(badgesCache).filter(b => b.tipo === 'global' || b.creadorId === currentUser.supervisorAsignado);
+            // Añadimos validación para asegurar que supervisorAsignado exista antes de comparar
+            const supervisorId = currentUser.supervisorAsignado || '';
+            const availableBadges = Object.values(badgesCache).filter(b => b.tipo === 'global' || (supervisorId && b.creadorId === supervisorId));
 
             let html = '<div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-orange-500">';
             html += '<h3 class="font-bold text-xl mb-4">🏆 Mis Insignias Ganadas</h3>';
@@ -3294,8 +3324,6 @@ async function renderAsesorDashboard() {
             modal.classList.remove('hidden');
         }
 
-        // ======================= LÓGICA DE VISUALIZACIÓN DE EVALUACIÓN INDIVIDUAL =======================
-
         async function viewSingleEvaluationFromExport() {
             // 1. Validar selección única
             const selectedChecks = document.querySelectorAll('.asesor-check:checked');
@@ -3350,7 +3378,7 @@ async function renderAsesorDashboard() {
                 const templateDoc = await getDoc(doc(db, "evaluation_templates", supervisorId));
                 const template = normalizeCategories(templateDoc.exists() ? templateDoc.data().categorias || [] : []);
 
-                // 5. Renderizar Contenido (Reutilizando lógica visual del dashboard)
+                // 5. Renderizar Contenido
                 let html = '';
 
                 // --- Métricas ---
@@ -3406,12 +3434,38 @@ async function renderAsesorDashboard() {
                         </div>
                     `;
                 });
-
-                // --- Feedback General ---
+                
+                // --- SECCIÓN NUEVA: Feedback, Enlaces y Plan de Trabajo ---
                 html += `
-                    <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200 mt-6">
-                        <h5 class="font-bold text-yellow-800 text-sm mb-1">Feedback General</h5>
-                        <p class="text-sm text-yellow-900">${data.comentariosGenerales || 'Sin comentarios.'}</p>
+                    <div class="mt-8 space-y-4">
+                        <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                            <h5 class="font-bold text-yellow-800 text-sm mb-2">Feedback / Comentarios Generales</h5>
+                            <p class="text-sm text-yellow-900 whitespace-pre-wrap leading-relaxed">${data.comentariosGenerales || 'Sin comentarios generales.'}</p>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            
+                            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200 flex flex-col h-full">
+                                <h5 class="font-bold text-blue-800 text-sm mb-3">Documento de Detalles</h5>
+                                <div class="mt-auto">
+                                    ${data.enlaceDetalles 
+                                        ? `<a href="${data.enlaceDetalles}" target="_blank" class="block w-full text-center bg-white border border-blue-300 text-blue-600 font-semibold py-2 px-4 rounded hover:bg-blue-50 transition-colors text-sm">🔗 Abrir Documento Adjunto</a>` 
+                                        : `<div class="text-sm text-gray-400 italic bg-white p-2 rounded border border-gray-200 text-center">No se adjuntó enlace</div>`
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="bg-green-50 p-4 rounded-lg border border-green-200 flex flex-col h-full">
+                                <h5 class="font-bold text-green-800 text-sm mb-2">Plan de Trabajo</h5>
+                                <p class="text-sm text-green-900 mb-4 whitespace-pre-wrap flex-grow">${data.textoPlanTrabajo || 'Sin texto asignado.'}</p>
+                                <div class="mt-auto">
+                                     ${data.enlacePlanTrabajo 
+                                        ? `<a href="${data.enlacePlanTrabajo}" target="_blank" class="block w-full text-center bg-white border border-green-300 text-green-600 font-semibold py-2 px-4 rounded hover:bg-green-50 transition-colors text-sm">🔗 Ir al Recurso del Plan</a>` 
+                                        : `<div class="text-sm text-gray-400 italic bg-white p-2 rounded border border-gray-200 text-center">No se adjuntó enlace</div>`
+                                    }
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 `;
 
@@ -3485,8 +3539,12 @@ async function renderAsesorDashboard() {
             const template = normalizeCategories(templateDoc.data().categorias || []);
             const supervisorName = usersCache[supervisorId]?.nombre || supervisorId;
 
-            // 1. Headers Dinámicos
-            let headers = ["evalId", "asesorId", "asesorNombre", "mes", "año", "calificacionGeneral", "metaLlamadas", "comentariosGenerales"];
+            // 1. Headers Dinámicos (ACTUALIZADO)
+            let headers = [
+                "evalId", "asesorId", "asesorNombre", "mes", "año", "calificacionGeneral", 
+                "Llamadas", "Cumplimiento Llamadas %", "Alumnos", "Cumplimiento Alumnos %", 
+                "Comentarios Generales", "Enlace Detalles", "Enlace Plan Trabajo", "Texto Plan Trabajo"
+            ];
             template.forEach(cat => {
                 cat.grupos.forEach(grupo => {
                     grupo.criterios.forEach(crit => {
@@ -3514,12 +3572,29 @@ async function renderAsesorDashboard() {
                 if (filterMonth && filterMonth !== 'all' && e.month !== filterMonth) return;
                 if (!asesorIds.includes(e.asesorId)) return; // <-- CLAVE: Solo exporta los seleccionados
 
+                // --- INICIO BLOQUE MODIFICADO ---
                 const asesorNombre = usersCache[e.asesorId]?.nombre || 'N/A';
-                
+                const m = e.metricas || {}; // Extraer métricas de manera segura
+
                 let row = [
-                    doc.id, e.asesorId, `"${asesorNombre}"`, e.month, e.year,
-                    e.calificacionGeneral || '', e.metaLlamadas || '',
-                    `"${(e.comentariosGenerales || '').replace(/"/g, '""')}"`
+                    doc.id, 
+                    e.asesorId, 
+                    `"${asesorNombre}"`, 
+                    e.month, 
+                    e.year,
+                    e.calificacionGeneral || '',
+                    
+                    // Nuevas Métricas
+                    m.llamadas || '0',
+                    m.llamadasPct || '0',
+                    m.alumnos || '0',
+                    m.alumnosPct || '0',
+
+                    // Comentarios y Enlaces (con limpieza de comillas para CSV)
+                    `"${(e.comentariosGenerales || '').replace(/"/g, '""')}"`,
+                    `"${e.enlaceDetalles || ''}"`,
+                    `"${e.enlacePlanTrabajo || ''}"`,
+                    `"${(e.textoPlanTrabajo || '').replace(/"/g, '""')}"`
                 ];
 
                 template.forEach(cat => {
